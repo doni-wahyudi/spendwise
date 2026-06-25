@@ -25,9 +25,10 @@ Create a new branch `web_based`, configure the app to be a fully installable PWA
 - Ran `npm run build` locally: compiled successfully in 3.91s.
 - Verified dynamic base URL mapping for `/spendwise/` on built assets.
 - Pushed branch `web_based` to origin remote repository.
+- Fixed deployment pipeline failure by specifying `enablement: true` in `actions/configure-pages@v4` step and upgrading build environment Node version to `22`.
 
 ## Completion Log
-- **What was done**: Checked out `web_based` branch, created and configured a cache service worker `public/sw.js`, updated `src/main.tsx` to dynamically register the service worker, relative-aligned asset paths in `index.html` and `public/manifest.json`, updated `vite.config.ts` base path to `/spendwise/` for production builds, added a `.github/workflows/deploy.yml` deployment action, compiled the build locally to verify correctness, committed all files, and pushed to the remote repository.
+- **What was done**: Checked out `web_based` branch, created and configured a cache service worker `public/sw.js`, updated `src/main.tsx` to dynamically register the service worker, relative-aligned asset paths in `index.html` and `public/manifest.json`, updated `vite.config.ts` base path to `/spendwise/` for production builds, added a `.github/workflows/deploy.yml` deployment action (and later updated it with Node 22 and `enablement: true`), compiled the build locally to verify correctness, committed all files, and pushed to the remote repository.
 - **Why it was done**: To satisfy the request to transition to a PWA and configure automatic deployment to GitHub Pages under the `/spendwise/` subdirectory.
 - **What changed**: Added `public/sw.js`, `.github/workflows/deploy.yml`, and modified `index.html`, `public/manifest.json`, `src/main.tsx`, `vite.config.ts`.
 - **Unresolved items**: None. The user must select **GitHub Actions** as the source for Pages under repository **Settings -> Pages** for the deployment to publish.

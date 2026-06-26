@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../db/supabase';
+import { pullFromSupabase, startRealtimeSubscription, unsubscribeRealtime } from '../db/sync';
 
 interface AuthContextType {
     user: User | null;
@@ -31,6 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+            if (session) {
+                pullFromSupabase();
+                startRealtimeSubscription();
+            }
         });
 
         // Listen for auth changes
@@ -38,6 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             (_event, session) => {
                 setSession(session);
                 setUser(session?.user ?? null);
+                if (session) {
+                    pullFromSupabase();
+                    startRealtimeSubscription();
+                } else {
+                    unsubscribeRealtime();
+                }
             }
         );
 

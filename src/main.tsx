@@ -6,6 +6,7 @@ import { seedDatabase } from './db/seed'
 import { seedAccounts } from './db/seedAccounts'
 import { processRecurringTransactions } from './db/recurring'
 import { AuthProvider } from './store/AuthContext'
+import './db/sync'
 
 // Initialize DB seeding
 seedDatabase();

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Category } from '../db/db';
 import { useStore } from '../store/useStore';
 import { useToast } from '../store/useToast';
-import { Download, Plus, Trash2, Pencil, X, AlertTriangle, Palette, Database, Sparkles, FolderOpen } from 'lucide-react';
+import { Download, Plus, Trash2, Pencil, X, Calendar, AlertTriangle, Palette, Database, Sparkles, FolderOpen } from 'lucide-react';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
 import { formatLocalDate } from '../utils/dateUtils';
 import RecurringManager from './RecurringManager';
@@ -531,56 +531,110 @@ export default function SettingsView() {
 // Salary Day Setting Component
 function SalaryDaySetting() {
     const { salaryDay, setSalaryDay } = useStore();
-    const [inputValue, setInputValue] = useState(salaryDay.toString());
+    const [showDayGrid, setShowDayGrid] = useState(false);
 
-    // Keep input in sync when salaryDay is updated externally
-    useEffect(() => {
-        setInputValue(salaryDay.toString());
-    }, [salaryDay]);
+    const QUICK_PRESETS = [1, 15, 20, 25, 28, 31];
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        setInputValue(val);
-
-        if (val.trim() !== '') {
-            const num = parseInt(val, 10);
-            if (!isNaN(num) && num >= 1 && num <= 31) {
-                setSalaryDay(num);
-            }
-        }
+    const handleSelectDay = (day: number) => {
+        const validDay = Math.min(31, Math.max(1, day));
+        setSalaryDay(validDay);
     };
 
-    const handleBlur = () => {
-        if (!inputValue || inputValue.trim() === '') {
-            setInputValue(salaryDay.toString());
-        } else {
-            const num = parseInt(inputValue, 10);
-            const clamped = isNaN(num) ? 1 : Math.min(31, Math.max(1, num));
-            setInputValue(clamped.toString());
-            setSalaryDay(clamped);
-        }
+    const handlePrevDay = () => {
+        setSalaryDay(salaryDay <= 1 ? 31 : salaryDay - 1);
+    };
+
+    const handleNextDay = () => {
+        setSalaryDay(salaryDay >= 31 ? 1 : salaryDay + 1);
     };
 
     return (
-        <section className="settings-section">
-            <h3>💰 Salary Period</h3>
+        <section className="settings-section salary-day-section">
+            <div className="section-header">
+                <h3>💰 Salary Period</h3>
+                <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 500 }}>✓ DB Synced</span>
+            </div>
             <p className="settings-description">
-                Set your salary day to track spending between paydays. Automatically synced across devices via database.
+                Select the day of the month your salary is received to align your spending period.
             </p>
-            <div className="setting-row">
-                <label>Salary Day (1-31)</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="1-31"
-                        value={inputValue}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        className="salary-day-input"
-                    />
-                    <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 500 }}>✓ DB Synced</span>
+
+            <div className="salary-picker-container">
+                {/* Stepper + Select Picker */}
+                <div className="salary-stepper">
+                    <button
+                        type="button"
+                        onClick={handlePrevDay}
+                        className="stepper-btn"
+                        title="Previous Day"
+                    >
+                        −
+                    </button>
+
+                    <div className="salary-select-wrapper">
+                        <select
+                            value={salaryDay}
+                            onChange={(e) => handleSelectDay(Number(e.target.value))}
+                            className="salary-dropdown-picker"
+                        >
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                                <option key={day} value={day}>
+                                    Day {day} {day === 1 ? '(1st)' : day === 25 ? '(25th - Popular)' : ''}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleNextDay}
+                        className="stepper-btn"
+                        title="Next Day"
+                    >
+                        +
+                    </button>
                 </div>
+
+                {/* Quick Presets */}
+                <div className="salary-presets">
+                    <span className="presets-label">Quick select:</span>
+                    <div className="preset-chips">
+                        {QUICK_PRESETS.map((day) => (
+                            <button
+                                key={day}
+                                type="button"
+                                className={`preset-chip ${salaryDay === day ? 'active' : ''}`}
+                                onClick={() => handleSelectDay(day)}
+                            >
+                                Day {day}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Day Grid Toggle */}
+                <button
+                    type="button"
+                    className="toggle-grid-btn"
+                    onClick={() => setShowDayGrid(!showDayGrid)}
+                >
+                    <Calendar size={14} />
+                    {showDayGrid ? 'Hide Day Grid' : 'Show All 31 Days'}
+                </button>
+
+                {showDayGrid && (
+                    <div className="days-31-grid">
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                            <button
+                                key={day}
+                                type="button"
+                                className={`day-grid-cell ${salaryDay === day ? 'active' : ''}`}
+                                onClick={() => handleSelectDay(day)}
+                            >
+                                {day}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         </section>
     );

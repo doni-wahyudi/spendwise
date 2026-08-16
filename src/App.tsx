@@ -1,5 +1,7 @@
 import { useStore } from './store/useStore';
 import { useState, useEffect, useRef } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from './db/db';
 import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
 import SummaryChart from './components/SummaryChart';
@@ -26,11 +28,19 @@ import { useToast } from './store/useToast';
 import { CreditCard, PieChart, Settings, Plus, Calendar, X, BookOpen } from 'lucide-react';
 
 function App() {
-    const { activeTab, setActiveTab, theme, editingTransaction, setEditingTransaction } = useStore();
+    const { activeTab, setActiveTab, theme, editingTransaction, setEditingTransaction, salaryDay, setSalaryDay } = useStore();
     const [showTransactionModal, setShowTransactionModal] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const { addToast } = useToast();
     const recurringProcessed = useRef(false);
+
+    // Sync salaryDay from database
+    const dbSalarySetting = useLiveQuery(() => db.settings.get('salaryDay'));
+    useEffect(() => {
+        if (dbSalarySetting && typeof dbSalarySetting.value === 'number' && dbSalarySetting.value !== salaryDay) {
+            setSalaryDay(dbSalarySetting.value);
+        }
+    }, [dbSalarySetting, salaryDay, setSalaryDay]);
 
     // Budget alerts - monitors spending and shows warnings
     useBudgetAlerts();

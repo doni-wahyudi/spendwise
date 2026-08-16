@@ -1,8 +1,10 @@
 import { db, type RecurringTransaction } from './db';
+import { formatLocalDate } from '../utils/dateUtils';
 
 // Calculate next occurrence date based on frequency
 export function getNextOccurrence(lastDate: string, frequency: RecurringTransaction['frequency']): string {
-    const date = new Date(lastDate + 'T00:00:00');
+    const [year, month, day] = lastDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
 
     switch (frequency) {
         case 'daily':
@@ -19,13 +21,13 @@ export function getNextOccurrence(lastDate: string, frequency: RecurringTransact
             break;
     }
 
-    return date.toISOString().split('T')[0];
+    return formatLocalDate(date);
 }
 
 // Check and generate due recurring transactions
 export async function processRecurringTransactions(): Promise<number> {
-    const today = new Date().toISOString().split('T')[0];
-    const activeRecurring = await db.recurringTransactions.where('isActive').equals(1).toArray();
+    const today = formatLocalDate(new Date());
+    const activeRecurring = await db.recurringTransactions.filter(r => Boolean(r.isActive)).toArray();
 
     let generatedCount = 0;
 
@@ -42,6 +44,7 @@ export async function processRecurringTransactions(): Promise<number> {
                 type: recurring.type,
                 amount: recurring.amount,
                 categoryId: recurring.categoryId,
+                accountId: recurring.accountId,
                 date: nextDate,
                 note: recurring.note ? `[Auto] ${recurring.note}` : '[Auto] Recurring',
                 createdAt: Date.now()
@@ -70,7 +73,7 @@ export function getNextOccurrencePreview(recurring: RecurringTransaction): strin
         ? getNextOccurrence(recurring.lastGenerated, recurring.frequency)
         : recurring.startDate;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
 
     if (nextDate <= today) {
         return 'Due now';

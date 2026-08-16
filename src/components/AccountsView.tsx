@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Account } from '../db/db';
 import { useToast } from '../store/useToast';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import { Wallet, Plus, Trash2, Edit2, ArrowRightLeft, Building2, Smartphone, PiggyBank, X, Check, History } from 'lucide-react';
 
 const ACCOUNT_ICONS: Record<string, React.ReactNode> = {
@@ -123,23 +124,20 @@ export default function AccountsView() {
 
             addToast('Account updated', 'success');
         } else {
-            await db.accounts.add(accountData);
+            const newAccountId = await db.accounts.add(accountData);
             // Add initial balance as income if provided
             if (balance && parseFormattedNumber(balance) > 0) {
                 const defaultCategory = await db.categories.where('type').equals('income').first();
-                if (defaultCategory) {
-                    const newAccountId = await db.accounts.orderBy('id').last();
-                    if (newAccountId) {
-                        await db.transactions.add({
-                            type: 'income',
-                            amount: parseFormattedNumber(balance),
-                            categoryId: defaultCategory.id,
-                            accountId: newAccountId.id,
-                            date: new Date().toISOString().split('T')[0],
-                            note: 'Initial balance',
-                            createdAt: Date.now()
-                        });
-                    }
+                if (defaultCategory && newAccountId) {
+                    await db.transactions.add({
+                        type: 'income',
+                        amount: parseFormattedNumber(balance),
+                        categoryId: defaultCategory.id,
+                        accountId: Number(newAccountId),
+                        date: formatLocalDate(new Date()),
+                        note: 'Initial balance',
+                        createdAt: Date.now()
+                    });
                 }
             }
             addToast('Account created', 'success');
@@ -192,7 +190,7 @@ export default function AccountsView() {
             fromAccountId,
             toAccountId,
             amount,
-            date: new Date().toISOString().split('T')[0],
+            date: formatLocalDate(new Date()),
             note: transferNote.trim() || undefined,
             createdAt: Date.now()
         });

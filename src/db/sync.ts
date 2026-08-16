@@ -18,7 +18,8 @@ const TABLE_MAP: Record<string, string> = {
     recurringTransactions: 'recurring_transactions',
     tags: 'tags',
     accountTransfers: 'account_transfers',
-    ledger: 'ledger'
+    ledger: 'ledger',
+    settings: 'settings'
 };
 
 // Convert camelCase to snake_case for Supabase
@@ -83,14 +84,16 @@ const registerDexieHooks = () => {
         const table = (db as any)[tableName];
         if (!table) return;
 
-        table.hook('creating', function (this: any, _primKey: any, obj: any) {
+        table.hook('creating', function (this: any, primKey: any, obj: any) {
+            const cloned = { ...obj };
             this.onsuccess = function (actualKey: any) {
-                syncLocalToRemote(tableName, 'upsert', { ...obj, id: actualKey });
+                syncLocalToRemote(tableName, 'upsert', { ...cloned, id: actualKey ?? primKey });
             };
         });
 
-        table.hook('updating', function (this: any, _mods: any, _primKey: any, _obj: any) {
-            this.onsuccess = function (updatedObj: any) {
+        table.hook('updating', function (this: any, mods: any, primKey: any, obj: any) {
+            const updatedObj = { ...obj, ...mods, id: primKey };
+            this.onsuccess = function () {
                 syncLocalToRemote(tableName, 'upsert', updatedObj);
             };
         });

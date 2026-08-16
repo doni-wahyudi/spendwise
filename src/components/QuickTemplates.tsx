@@ -4,6 +4,7 @@ import { db, type TransactionTemplate } from '../db/db';
 import { useStore } from '../store/useStore';
 import { useToast } from '../store/useToast';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import { Zap, Plus, Trash2, Play } from 'lucide-react';
 
 export default function QuickTemplates() {
@@ -57,7 +58,7 @@ export default function QuickTemplates() {
             amount: template.amount,
             categoryId: template.categoryId,
             accountId: template.accountId,
-            date: new Date().toISOString().split('T')[0],
+            date: formatLocalDate(new Date()),
             note: template.note
         });
 

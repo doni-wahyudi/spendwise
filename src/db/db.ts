@@ -82,6 +82,13 @@ export interface TransactionTemplate {
   usageCount: number;
 }
 
+// Define Interface for App Settings
+export interface SettingItem {
+  id: string; // e.g. 'salaryDay'
+  value: any;
+  updatedAt: number;
+}
+
 // Database Declaration
 const db = new Dexie('SpendWiseDB') as Dexie & {
   transactions: EntityTable<Transaction, 'id'>,
@@ -93,7 +100,8 @@ const db = new Dexie('SpendWiseDB') as Dexie & {
   transactionTemplates: EntityTable<TransactionTemplate, 'id'>,
   tags: EntityTable<TagDefinition, 'id'>,
   accountTransfers: EntityTable<AccountTransfer, 'id'>,
-  ledger: EntityTable<LedgerItem, 'id'>
+  ledger: EntityTable<LedgerItem, 'id'>,
+  settings: EntityTable<SettingItem, 'id'>
 };
 
 // Schema versions
@@ -215,6 +223,21 @@ db.version(10).stores({
   tags: '++id, &name',
   accountTransfers: '++id, fromAccountId, toAccountId, date',
   ledger: '++id, type, personName, isPaid, dueDate, createdAt'
+});
+
+// Version 11: Added Settings table for cross-device sync of user preferences (salaryDay, etc.)
+db.version(11).stores({
+  transactions: '++id, type, categoryId, accountId, date',
+  categories: '++id, name, type',
+  recurringTransactions: '++id, type, categoryId, frequency, isActive',
+  accounts: '++id, name, type, isDefault',
+  savingsGoals: '++id, name',
+  billReminders: '++id, name, dueDay, isActive',
+  transactionTemplates: '++id, name, usageCount',
+  tags: '++id, &name',
+  accountTransfers: '++id, fromAccountId, toAccountId, date',
+  ledger: '++id, type, personName, isPaid, dueDate, createdAt',
+  settings: '&id'
 });
 
 export { db };

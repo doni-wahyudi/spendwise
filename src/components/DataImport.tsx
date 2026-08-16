@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { db } from '../db/db';
+import { formatLocalDate } from '../utils/dateUtils';
 import { Upload, FileJson, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
 
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -70,7 +71,7 @@ export default function DataImport() {
                 type: tx.type || 'expense',
                 amount: Number(tx.amount) || 0,
                 categoryId: Number(tx.categoryId) || 1,
-                date: tx.date || new Date().toISOString().split('T')[0],
+                date: tx.date || formatLocalDate(new Date()),
                 note: tx.note || '',
                 createdAt: tx.createdAt || Date.now()
             });
@@ -119,7 +120,7 @@ export default function DataImport() {
                 type: row.type === 'income' ? 'income' : 'expense',
                 amount: Number(row.amount.replace(/[^0-9.-]/g, '')) || 0,
                 categoryId,
-                date: row.date || new Date().toISOString().split('T')[0],
+                date: row.date || formatLocalDate(new Date()),
                 note: row.note || '',
                 createdAt: Date.now()
             });

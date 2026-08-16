@@ -113,7 +113,16 @@ export const useStore = create<AppState>()(
 
             // Salary Period
             salaryDay: 1,
-            setSalaryDay: (day) => set({ salaryDay: day }),
+            setSalaryDay: (day) => {
+                set({ salaryDay: day });
+                if (get().dateFilterType === 'salary') {
+                    get().setDateFilter('salary');
+                }
+                // Persist to database for cross-device sync
+                db.settings.put({ id: 'salaryDay', value: day, updatedAt: Date.now() }).catch(err => {
+                    console.error('Failed to persist salaryDay to db.settings:', err);
+                });
+            },
 
             // Auto-Backup
             autoBackupEnabled: false,

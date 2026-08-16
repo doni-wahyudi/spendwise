@@ -3,6 +3,7 @@ import { db } from '../db/db';
 import { useStore } from '../store/useStore';
 import { Pencil, Copy } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import { useState, useRef } from 'react';
 
 interface Props {
@@ -16,9 +17,12 @@ export default function TransactionList({ limit, useFilter = false, useSearch = 
     const [swipingId, setSwipingId] = useState<number | null>(null);
     const touchStartX = useRef(0);
 
+    const categories = useLiveQuery(() => db.categories.toArray());
+
     const transactions = useLiveQuery(async () => {
         let collection = db.transactions.orderBy('date').reverse();
         const all = await collection.toArray();
+        const allCats = categories || await db.categories.toArray();
 
         let filtered = all;
 
@@ -31,10 +35,15 @@ export default function TransactionList({ limit, useFilter = false, useSearch = 
         if (useSearch) {
             // Text search
             if (searchFilter.searchText) {
-                const searchLower = searchFilter.searchText.toLowerCase();
-                filtered = filtered.filter(tx =>
-                    tx.note?.toLowerCase().includes(searchLower)
-                );
+                const searchLower = searchFilter.searchText.toLowerCase().trim();
+                filtered = filtered.filter(tx => {
+                    const noteMatch = tx.note?.toLowerCase().includes(searchLower);
+                    const catName = allCats.find(c => c.id === tx.categoryId)?.name.toLowerCase();
+                    const catMatch = catName?.includes(searchLower);
+                    const tagMatch = tx.tags?.some(t => t.toLowerCase().includes(searchLower));
+                    const amountMatch = tx.amount.toString().includes(searchLower);
+                    return noteMatch || catMatch || tagMatch || amountMatch;
+                });
             }
 
             // Category filter
@@ -57,9 +66,7 @@ export default function TransactionList({ limit, useFilter = false, useSearch = 
             return filtered.slice(0, limit);
         }
         return filtered;
-    }, [limit, useFilter, useSearch, dateRange, searchFilter]);
-
-    const categories = useLiveQuery(() => db.categories.toArray());
+    }, [limit, useFilter, useSearch, dateRange, searchFilter, categories]);
 
     if (!transactions || !categories) {
         return (
@@ -84,8 +91,10 @@ export default function TransactionList({ limit, useFilter = false, useSearch = 
             type: tx.type,
             amount: tx.amount,
             categoryId: tx.categoryId,
-            date: new Date().toISOString().split('T')[0],
-            note: tx.note
+            accountId: tx.accountId,
+            date: formatLocalDate(new Date()),
+            note: tx.note,
+            tags: tx.tags
         });
     };
 

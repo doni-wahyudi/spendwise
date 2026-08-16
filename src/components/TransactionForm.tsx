@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { useStore } from '../store/useStore';
 import { useToast } from '../store/useToast';
 import { formatNumber, parseFormattedNumber } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import { scanReceipt } from '../utils/receiptScanner';
 import TagInput from './TagInput';
 import { Camera, Loader, Upload } from 'lucide-react';
@@ -25,18 +26,18 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
     const [accountId, setAccountId] = useState('');
     const [type, setType] = useState<'income' | 'expense'>('expense');
     const [note, setNote] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(formatLocalDate(new Date()));
     const [tags, setTags] = useState<string[]>([]);
     const [error, setError] = useState('');
     const [isScanning, setIsScanning] = useState(false);
 
-    // Set default account
+    // Set default account for new transactions only
     useEffect(() => {
-        if (accounts && accounts.length > 0 && !accountId) {
+        if (!editingTransaction && accounts && accounts.length > 0 && !accountId) {
             const defaultAcc = accounts.find(a => a.isDefault) || accounts[0];
             setAccountId(defaultAcc.id.toString());
         }
-    }, [accounts, accountId]);
+    }, [accounts, accountId, editingTransaction]);
 
     // Populate form when editing
     useEffect(() => {
@@ -110,7 +111,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
         setCategoryId('');
         setType('expense');
         setNote('');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(formatLocalDate(new Date()));
         setTags([]);
         setEditingTransaction(null);
         setError('');

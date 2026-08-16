@@ -1,31 +1,38 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/currency';
 import { TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export default function BudgetForecast() {
     const transactions = useLiveQuery(() => db.transactions.toArray());
     const categories = useLiveQuery(() => db.categories.toArray());
+    const { dateRange } = useStore();
 
     const forecast = useMemo(() => {
         if (!transactions || !categories) return null;
 
         const now = new Date();
-        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const dayOfMonth = now.getDate();
-        const daysRemaining = daysInMonth - dayOfMonth;
+        const [sY, sM, sD] = dateRange.startDate.split('-').map(Number);
+        const [eY, eM, eD] = dateRange.endDate.split('-').map(Number);
+        const start = new Date(sY, sM - 1, sD);
+        const end = new Date(eY, eM - 1, eD);
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        // Get this month's expenses
-        const monthExpenses = transactions.filter(
-            tx => tx.type === 'expense' && tx.date.startsWith(currentMonth)
+        const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        const elapsedDays = Math.max(1, Math.min(totalDays, Math.round((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1));
+        const daysRemaining = Math.max(0, totalDays - elapsedDays);
+
+        // Get this period's expenses
+        const periodExpenses = transactions.filter(
+            tx => tx.type === 'expense' && tx.date >= dateRange.startDate && tx.date <= dateRange.endDate
         );
 
-        const totalSpent = monthExpenses.reduce((sum, tx) => sum + tx.amount, 0);
+        const totalSpent = periodExpenses.reduce((sum, tx) => sum + tx.amount, 0);
 
         // Calculate daily average and projected spending
-        const dailyAverage = dayOfMonth > 0 ? totalSpent / dayOfMonth : 0;
+        const dailyAverage = totalSpent / elapsedDays;
         const projectedTotal = totalSpent + (dailyAverage * daysRemaining);
 
         // Get total budget from categories
@@ -37,11 +44,11 @@ export default function BudgetForecast() {
         const categoryForecasts = categories
             .filter(c => c.budgetLimit && c.budgetLimit > 0)
             .map(cat => {
-                const spent = monthExpenses
+                const spent = periodExpenses
                     .filter(tx => tx.categoryId === cat.id)
                     .reduce((sum, tx) => sum + tx.amount, 0);
 
-                const projected = spent + ((spent / Math.max(dayOfMonth, 1)) * daysRemaining);
+                const projected = spent + ((spent / elapsedDays) * daysRemaining);
                 const percentUsed = (spent / cat.budgetLimit!) * 100;
                 const projectedPercent = (projected / cat.budgetLimit!) * 100;
 
@@ -71,9 +78,9 @@ export default function BudgetForecast() {
             daysRemaining,
             willExceedBudget,
             categoryForecasts,
-            percentComplete: (dayOfMonth / daysInMonth) * 100
+            percentComplete: (elapsedDays / totalDays) * 100
         };
-    }, [transactions, categories]);
+    }, [transactions, categories, dateRange]);
 
     if (!forecast) {
         return <div className="skeleton" style={{ height: 150 }} />;

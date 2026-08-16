@@ -102,17 +102,6 @@ export default function TagComparison() {
         return <div className="skeleton" style={{ height: 200 }} />;
     }
 
-    if (tagTotals.length === 0) {
-        return (
-            <section className="card tag-comparison">
-                <div className="card-header">
-                    <h3><Tag size={18} /> Tag Comparison</h3>
-                </div>
-                <p className="empty-message">No tagged expenses in this period.</p>
-            </section>
-        );
-    }
-
     const options = {
         responsive: true,
         maintainAspectRatio: false,
@@ -152,21 +141,27 @@ export default function TagComparison() {
                 </div>
             </div>
 
-            <div className="chart-container" style={{ height: 200 }}>
-                <Bar data={chartData} options={options} />
-            </div>
-
-            <div className="comparison-details">
-                {tagTotals.map((tag, i) => (
-                    <div key={i} className="comparison-row">
-                        <span className="cat-name">#{tag.tag}</span>
-                        <span className={`change ${tag.change > 0 ? 'up' : tag.change < 0 ? 'down' : ''}`}>
-                            {tag.change > 0 ? '↑' : tag.change < 0 ? '↓' : '→'}
-                            {Math.abs(tag.change).toFixed(0)}%
-                        </span>
+            {tagTotals.length === 0 ? (
+                <p className="empty-message">No tagged expenses in this period.</p>
+            ) : (
+                <>
+                    <div className="chart-container" style={{ height: 200 }}>
+                        <Bar data={chartData} options={options} />
                     </div>
-                ))}
-            </div>
+
+                    <div className="comparison-details">
+                        {tagTotals.map((tag, i) => (
+                            <div key={i} className="comparison-row">
+                                <span className="cat-name">#{tag.tag}</span>
+                                <span className={`change ${tag.change > 0 ? 'up' : tag.change < 0 ? 'down' : ''}`}>
+                                    {tag.change > 0 ? '↑' : tag.change < 0 ? '↓' : '→'}
+                                    {Math.abs(tag.change).toFixed(0)}%
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
         </section>
     );
 }

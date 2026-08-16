@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type RecurringTransaction } from '../db/db';
 import { getNextOccurrencePreview } from '../db/recurring';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import { Plus, Trash2, Play, Pause, RefreshCw } from 'lucide-react';
 
 export default function RecurringManager() {
@@ -14,7 +15,7 @@ export default function RecurringManager() {
     const [categoryId, setCategoryId] = useState('');
     const [type, setType] = useState<'income' | 'expense'>('expense');
     const [frequency, setFrequency] = useState<RecurringTransaction['frequency']>('monthly');
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(formatLocalDate(new Date()));
     const [note, setNote] = useState('');
 
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {

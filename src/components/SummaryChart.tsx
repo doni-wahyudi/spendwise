@@ -4,11 +4,12 @@ import { Doughnut, Pie, Bar } from 'react-chartjs-2';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useStore } from '../store/useStore';
-import { PieChart, BarChart3 } from 'lucide-react';
+import { PieChart, BarChart3, Table } from 'lucide-react';
+import CategorySpendingTable from './CategorySpendingTable';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-type ChartType = 'doughnut' | 'pie' | 'bar';
+type ChartType = 'doughnut' | 'pie' | 'bar' | 'table';
 
 export default function SummaryChart() {
     const transactions = useLiveQuery(() => db.transactions.toArray());
@@ -102,16 +103,30 @@ export default function SummaryChart() {
                     >
                         <BarChart3 size={16} />
                     </button>
+                    <button
+                        className={chartType === 'table' ? 'active' : ''}
+                        onClick={() => setChartType('table')}
+                        title="Table View"
+                    >
+                        <Table size={16} />
+                    </button>
                 </div>
             </div>
-            <div className="chart-container" style={{ height: chartType === 'bar' ? 200 : 'auto' }}>
-                {chartType === 'doughnut' && <Doughnut data={data} options={pieOptions} />}
-                {chartType === 'pie' && <Pie data={data} options={pieOptions} />}
-                {chartType === 'bar' && <Bar data={data} options={barOptions} />}
-            </div>
-            <div className="heavy-spot-alert">
-                <strong>Heavy Spot:</strong> {data.labels[0]} ({Math.round(data.datasets[0].data[0] / data.datasets[0].data.reduce((a, b) => a + b, 0) * 100)}%)
-            </div>
+
+            {chartType === 'table' ? (
+                <CategorySpendingTable />
+            ) : (
+                <>
+                    <div className="chart-container" style={{ height: chartType === 'bar' ? 200 : 'auto' }}>
+                        {chartType === 'doughnut' && <Doughnut data={data} options={pieOptions} />}
+                        {chartType === 'pie' && <Pie data={data} options={pieOptions} />}
+                        {chartType === 'bar' && <Bar data={data} options={barOptions} />}
+                    </div>
+                    <div className="heavy-spot-alert">
+                        <strong>Heavy Spot:</strong> {data.labels[0]} ({Math.round(data.datasets[0].data[0] / data.datasets[0].data.reduce((a, b) => a + b, 0) * 100)}%)
+                    </div>
+                </>
+            )}
         </div>
     );
 }

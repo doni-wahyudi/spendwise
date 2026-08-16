@@ -109,6 +109,11 @@ export default function CloudBackup() {
             const ledgerData = transformArray(addUserId(ledgerItems), toSnakeCase);
             await backupTable('ledger', ledgerData);
 
+            // Backup settings
+            const settingsItems = await db.settings.toArray();
+            const settingsData = transformArray(addUserId(settingsItems), toSnakeCase);
+            await backupTable('settings', settingsData);
+
             if (hasError) {
                 setBackupStatus('error');
                 addToast('Backup completed with errors', 'error');
@@ -157,6 +162,7 @@ export default function CloudBackup() {
             const { data: recurring } = await supabase.from(TABLES.recurringTransactions).select('*').eq('user_id', user.id);
             const { data: tags } = await supabase.from('tags').select('*').eq('user_id', user.id);
             const { data: transfers } = await supabase.from('account_transfers').select('*').eq('user_id', user.id);
+            const { data: settings } = await supabase.from('settings').select('*').eq('user_id', user.id);
 
             // Clear local database
             await db.transactions.clear();
@@ -169,6 +175,7 @@ export default function CloudBackup() {
             await db.tags.clear();
             await db.accountTransfers.clear();
             await db.ledger.clear();
+            await db.settings.clear();
 
             // Remove user_id before storing locally
             const removeUserId = (arr: any[]) =>
@@ -188,6 +195,7 @@ export default function CloudBackup() {
             if (tags?.length) await db.tags.bulkAdd(removeUserId(transformArray(tags, toCamelCase)));
             if (transfers?.length) await db.accountTransfers.bulkAdd(removeUserId(transformArray(transfers, toCamelCase)));
             if (ledgerItems?.length) await db.ledger.bulkAdd(removeUserId(transformArray(ledgerItems, toCamelCase)));
+            if (settings?.length) await db.settings.bulkAdd(removeUserId(transformArray(settings, toCamelCase)));
 
             setRestoreStatus('success');
             addToast('Restore successful! Refreshing...', 'success');

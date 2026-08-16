@@ -7,8 +7,15 @@ export default function SearchFilter() {
     const { searchFilter, setSearchFilter, clearSearchFilter } = useStore();
     const categories = useLiveQuery(() => db.categories.toArray());
 
-    // Get all tags from tags table
-    const allTags = useLiveQuery(() => db.tags.toArray(), []);
+    // Get all tags from tags table and transactions
+    const allTags = useLiveQuery(async () => {
+        const tagDefs = await db.tags.toArray();
+        const txs = await db.transactions.toArray();
+        const tagSet = new Set<string>();
+        tagDefs.forEach(t => tagSet.add(t.name));
+        txs.forEach(tx => tx.tags?.forEach(t => tagSet.add(t)));
+        return Array.from(tagSet).sort();
+    }, []);
 
     const hasActiveFilter = searchFilter.searchText || searchFilter.categoryId || searchFilter.type !== 'all' || searchFilter.tag;
 
@@ -18,7 +25,7 @@ export default function SearchFilter() {
                 <Search size={18} className="search-icon" />
                 <input
                     type="text"
-                    placeholder="Search by note..."
+                    placeholder="Search note, category, tag, amount..."
                     value={searchFilter.searchText}
                     onChange={(e) => setSearchFilter({ searchText: e.target.value })}
                     className="search-input"
@@ -49,7 +56,7 @@ export default function SearchFilter() {
                 >
                     <option value="">All Tags</option>
                     {allTags?.map(tag => (
-                        <option key={tag.name} value={tag.name}>#{tag.name}</option>
+                        <option key={tag} value={tag}>#{tag}</option>
                     ))}
                 </select>
             </div>

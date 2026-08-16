@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
+import { db, type Category } from '../db/db';
 import { useStore } from '../store/useStore';
-import { Download, Plus, Trash2, AlertTriangle, Palette, Database, Sparkles, FolderOpen } from 'lucide-react';
+import { useToast } from '../store/useToast';
+import { Download, Plus, Trash2, Pencil, X, AlertTriangle, Palette, Database, Sparkles, FolderOpen } from 'lucide-react';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import RecurringManager from './RecurringManager';
 import ThemeToggle from './ThemeToggle';
 import DataImport from './DataImport';
@@ -22,8 +24,14 @@ import { seedAccounts } from '../db/seedAccounts';
 
 type SettingsTab = 'appearance' | 'features' | 'data' | 'categories';
 
+const PRESET_COLORS = [
+    '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
+    '#f59e0b', '#10b981', '#14b8a6', '#3b82f6', '#64748b'
+];
+
 export default function SettingsView() {
     const { addCategory } = useStore();
+    const { addToast } = useToast();
     const categories = useLiveQuery(() => db.categories.toArray());
     const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
 
@@ -33,7 +41,14 @@ export default function SettingsView() {
     const [newType, setNewType] = useState<'income' | 'expense'>('expense');
     const [newColor, setNewColor] = useState('#6366f1');
 
-    // Budget editing state
+    // Edit category state
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editType, setEditType] = useState<'income' | 'expense' | 'both'>('expense');
+    const [editColor, setEditColor] = useState('#6366f1');
+    const [editBudget, setEditBudget] = useState('');
+
+    // Budget inline editing state
     const [editingBudget, setEditingBudget] = useState<number | null>(null);
     const [budgetValue, setBudgetValue] = useState('');
 
@@ -51,11 +66,40 @@ export default function SettingsView() {
         setNewName('');
         setNewColor('#6366f1');
         setShowNewCategory(false);
+        addToast('Category added!', 'success');
+    };
+
+    const handleStartEditCategory = (cat: Category) => {
+        setEditingCategory(cat);
+        setEditName(cat.name);
+        setEditType(cat.type);
+        setEditColor(cat.color || '#6366f1');
+        setEditBudget(cat.budgetLimit ? formatNumber(cat.budgetLimit.toString()) : '');
+    };
+
+    const handleSaveEditCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingCategory || !editName.trim()) return;
+
+        const budgetLimit = editType !== 'income' && editBudget
+            ? parseFormattedNumber(editBudget)
+            : undefined;
+
+        await db.categories.update(editingCategory.id, {
+            name: editName.trim(),
+            type: editType,
+            color: editColor,
+            budgetLimit: budgetLimit && budgetLimit > 0 ? budgetLimit : undefined
+        });
+
+        setEditingCategory(null);
+        addToast('Category updated!', 'success');
     };
 
     const handleDeleteCategory = async (id: number) => {
         if (confirm('Delete this category? Transactions using it will keep their category reference.')) {
             await db.categories.delete(id);
+            addToast('Category deleted', 'info');
         }
     };
 
@@ -88,7 +132,7 @@ export default function SettingsView() {
 
         if (format === 'json') {
             content = JSON.stringify({ transactions, categories: cats }, null, 2);
-            filename = `spendwise-export-${new Date().toISOString().split('T')[0]}.json`;
+            filename = `spendwise-export-${formatLocalDate(new Date())}.json`;
             mimeType = 'application/json';
         } else {
             const headers = ['ID', 'Type', 'Amount', 'Category', 'Date', 'Note', 'Created At'];
@@ -105,7 +149,7 @@ export default function SettingsView() {
                 ].join(',');
             });
             content = [headers.join(','), ...rows].join('\n');
-            filename = `spendwise-export-${new Date().toISOString().split('T')[0]}.csv`;
+            filename = `spendwise-export-${formatLocalDate(new Date())}.csv`;
             mimeType = 'text/csv';
         }
 
@@ -309,6 +353,94 @@ export default function SettingsView() {
                                 </form>
                             )}
 
+                            {/* Edit Category Modal */}
+                            {editingCategory && (
+                                <div className="modal-overlay" onClick={() => setEditingCategory(null)}>
+                                    <div className="modal-content compact" onClick={e => e.stopPropagation()}>
+                                        <div className="modal-header">
+                                            <h3>Edit Category</h3>
+                                            <button onClick={() => setEditingCategory(null)} className="close-btn">
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+                                        <form onSubmit={handleSaveEditCategory} className="edit-category-form">
+                                            <div className="form-group">
+                                                <label>Category Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={editName}
+                                                    onChange={(e) => setEditName(e.target.value)}
+                                                    placeholder="Category Name"
+                                                    required
+                                                    className="form-input"
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Type</label>
+                                                <select
+                                                    value={editType}
+                                                    onChange={(e) => setEditType(e.target.value as 'income' | 'expense' | 'both')}
+                                                    className="form-select"
+                                                >
+                                                    <option value="expense">Expense</option>
+                                                    <option value="income">Income</option>
+                                                    <option value="both">Both (Income & Expense)</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Color</label>
+                                                <div className="color-picker-row">
+                                                    <input
+                                                        type="color"
+                                                        value={editColor}
+                                                        onChange={(e) => setEditColor(e.target.value)}
+                                                        className="color-input"
+                                                    />
+                                                    <div className="preset-colors">
+                                                        {PRESET_COLORS.map(c => (
+                                                            <button
+                                                                key={c}
+                                                                type="button"
+                                                                className={`color-dot-btn ${editColor === c ? 'active' : ''}`}
+                                                                style={{ backgroundColor: c }}
+                                                                onClick={() => setEditColor(c)}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {editType !== 'income' && (
+                                                <div className="form-group">
+                                                    <label>Monthly Budget Limit (optional)</label>
+                                                    <div className="input-prefix-wrapper">
+                                                        <span className="input-prefix">Rp</span>
+                                                        <input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            placeholder="0"
+                                                            value={editBudget}
+                                                            onChange={(e) => {
+                                                                const digits = e.target.value.replace(/\D/g, '');
+                                                                setEditBudget(digits ? formatNumber(digits) : '');
+                                                            }}
+                                                            className="form-input"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="modal-actions">
+                                                <button type="button" onClick={() => setEditingCategory(null)} className="cancel-btn">
+                                                    Cancel
+                                                </button>
+                                                <button type="submit" className="submit-btn">
+                                                    Save Changes
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="category-group">
                                 <h4>Expense Categories</h4>
                                 <ul className="category-list">
@@ -344,7 +476,14 @@ export default function SettingsView() {
                                                         >
                                                             {cat.budgetLimit ? formatCurrency(cat.budgetLimit) : 'Set Budget'}
                                                         </button>
-                                                        <button onClick={() => handleDeleteCategory(cat.id)} className="delete-cat-btn">
+                                                        <button
+                                                            onClick={() => handleStartEditCategory(cat)}
+                                                            className="edit-cat-btn"
+                                                            title="Edit Category"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteCategory(cat.id)} className="delete-cat-btn" title="Delete Category">
                                                             <Trash2 size={14} />
                                                         </button>
                                                     </>
@@ -366,7 +505,14 @@ export default function SettingsView() {
                                                 {cat.isDefault && <span className="default-badge">Default</span>}
                                             </div>
                                             <div className="category-actions">
-                                                <button onClick={() => handleDeleteCategory(cat.id)} className="delete-cat-btn">
+                                                <button
+                                                    onClick={() => handleStartEditCategory(cat)}
+                                                    className="edit-cat-btn"
+                                                    title="Edit Category"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button onClick={() => handleDeleteCategory(cat.id)} className="delete-cat-btn" title="Delete Category">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
@@ -390,18 +536,21 @@ function SalaryDaySetting() {
         <section className="settings-section">
             <h3>💰 Salary Period</h3>
             <p className="settings-description">
-                Set your salary day to track spending between paydays.
+                Set your salary day to track spending between paydays. Automatically synced across devices via database.
             </p>
             <div className="setting-row">
                 <label>Salary Day (1-31)</label>
-                <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={salaryDay}
-                    onChange={(e) => setSalaryDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
-                    className="salary-day-input"
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={salaryDay}
+                        onChange={(e) => setSalaryDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
+                        className="salary-day-input"
+                    />
+                    <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 500 }}>✓ DB Synced</span>
+                </div>
             </div>
         </section>
     );

@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { useStore } from '../store/useStore';
 import { useToast } from '../store/useToast';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import { Split, Plus, Trash2, Check } from 'lucide-react';
 
 interface SplitItem {
@@ -20,7 +21,7 @@ export default function SplitTransaction() {
 
     const [showForm, setShowForm] = useState(false);
     const [totalAmount, setTotalAmount] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(formatLocalDate(new Date()));
     const [accountId, setAccountId] = useState('');
     const [splits, setSplits] = useState<SplitItem[]>([
         { categoryId: '', amount: '', note: '' },
@@ -31,7 +32,7 @@ export default function SplitTransaction() {
 
     const resetForm = () => {
         setTotalAmount('');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(formatLocalDate(new Date()));
         setAccountId('');
         setSplits([
             { categoryId: '', amount: '', note: '' },

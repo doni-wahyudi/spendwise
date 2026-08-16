@@ -3,13 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/currency';
+import { formatLocalDate } from '../utils/dateUtils';
 import { Pencil, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
 import SearchFilter from './SearchFilter';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export default function RecordsView() {
-    const { deleteTransaction, setEditingTransaction, addTransaction } = useStore();
+    const { deleteTransaction, setEditingTransaction, addTransaction, searchFilter } = useStore();
     const [period, setPeriod] = useState<Period>('daily');
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -17,14 +18,6 @@ export default function RecordsView() {
     const categories = useLiveQuery(() => db.categories.toArray());
 
     const getCategory = (id: number) => categories?.find(c => c.id === id);
-
-    // Helper function to format date as YYYY-MM-DD in local timezone
-    const formatLocalDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
 
     // Calculate date range based on period
     const { startDate, endDate, label } = useMemo(() => {
@@ -63,11 +56,41 @@ export default function RecordsView() {
         };
     }, [currentDate, period]);
 
-    // Filter transactions by period
+    // Filter transactions by period AND search filter
     const filteredTransactions = useMemo(() => {
         if (!transactions) return [];
-        return transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
-    }, [transactions, startDate, endDate]);
+        let result = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
+
+        // Text search
+        if (searchFilter.searchText) {
+            const searchLower = searchFilter.searchText.toLowerCase().trim();
+            result = result.filter(tx => {
+                const noteMatch = tx.note?.toLowerCase().includes(searchLower);
+                const catName = categories?.find(c => c.id === tx.categoryId)?.name.toLowerCase();
+                const catMatch = catName?.includes(searchLower);
+                const tagMatch = tx.tags?.some(t => t.toLowerCase().includes(searchLower));
+                const amountMatch = tx.amount.toString().includes(searchLower);
+                return noteMatch || catMatch || tagMatch || amountMatch;
+            });
+        }
+
+        // Category filter
+        if (searchFilter.categoryId) {
+            result = result.filter(tx => tx.categoryId === searchFilter.categoryId);
+        }
+
+        // Type filter
+        if (searchFilter.type !== 'all') {
+            result = result.filter(tx => tx.type === searchFilter.type);
+        }
+
+        // Tag filter
+        if (searchFilter.tag) {
+            result = result.filter(tx => tx.tags?.includes(searchFilter.tag!));
+        }
+
+        return result;
+    }, [transactions, startDate, endDate, searchFilter, categories]);
 
     // Calculate totals
     const totals = useMemo(() => {
@@ -111,7 +134,7 @@ export default function RecordsView() {
             amount: tx.amount,
             categoryId: tx.categoryId,
             accountId: tx.accountId,
-            date: new Date().toISOString().split('T')[0],
+            date: formatLocalDate(new Date()),
             note: tx.note,
             tags: tx.tags
         });

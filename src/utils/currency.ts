@@ -6,18 +6,23 @@ export const formatCurrency = (amount: number): string => {
         currency: 'IDR',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
-    }).format(amount);
+    }).format(amount || 0);
 };
 
-export const formatNumber = (value: string): string => {
+export const formatNumber = (value: string | number): string => {
+    if (value === null || value === undefined || value === '') return '';
+    const strVal = typeof value === 'number' ? value.toString() : value;
     // Remove all non-digits
-    const digits = value.replace(/\D/g, '');
+    const digits = strVal.replace(/\D/g, '');
+    if (!digits) return '';
     // Format with thousand separators
-    return new Intl.NumberFormat('id-ID').format(parseInt(digits) || 0);
+    return new Intl.NumberFormat('id-ID').format(parseInt(digits, 10));
 };
 
-export const parseFormattedNumber = (value: string): number => {
+export const parseFormattedNumber = (value: string | number): number => {
+    if (value === null || value === undefined || value === '') return 0;
+    if (typeof value === 'number') return isNaN(value) ? 0 : value;
     // Remove all non-digits and parse
     const digits = value.replace(/\D/g, '');
-    return parseInt(digits) || 0;
+    return digits ? parseInt(digits, 10) : 0;
 };

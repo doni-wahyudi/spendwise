@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Category } from '../db/db';
 import { useStore } from '../store/useStore';
@@ -531,6 +531,35 @@ export default function SettingsView() {
 // Salary Day Setting Component
 function SalaryDaySetting() {
     const { salaryDay, setSalaryDay } = useStore();
+    const [inputValue, setInputValue] = useState(salaryDay.toString());
+
+    // Keep input in sync when salaryDay is updated externally
+    useEffect(() => {
+        setInputValue(salaryDay.toString());
+    }, [salaryDay]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setInputValue(val);
+
+        if (val.trim() !== '') {
+            const num = parseInt(val, 10);
+            if (!isNaN(num) && num >= 1 && num <= 31) {
+                setSalaryDay(num);
+            }
+        }
+    };
+
+    const handleBlur = () => {
+        if (!inputValue || inputValue.trim() === '') {
+            setInputValue(salaryDay.toString());
+        } else {
+            const num = parseInt(inputValue, 10);
+            const clamped = isNaN(num) ? 1 : Math.min(31, Math.max(1, num));
+            setInputValue(clamped.toString());
+            setSalaryDay(clamped);
+        }
+    };
 
     return (
         <section className="settings-section">
@@ -542,11 +571,12 @@ function SalaryDaySetting() {
                 <label>Salary Day (1-31)</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={salaryDay}
-                        onChange={(e) => setSalaryDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="1-31"
+                        value={inputValue}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
                         className="salary-day-input"
                     />
                     <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 500 }}>✓ DB Synced</span>

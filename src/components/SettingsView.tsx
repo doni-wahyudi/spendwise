@@ -315,7 +315,7 @@ export default function SettingsView() {
                                 <h3>Categories</h3>
                                 <button className="add-category-btn" onClick={() => setShowNewCategory(!showNewCategory)}>
                                     <Plus size={16} />
-                                    {t(language, 'addCategory')}
+                                    {t(language, 'add')} {t(language, 'categories')}
                                 </button>
                             </div>
 

@@ -67,8 +67,7 @@ export default function RecurringManager() {
 
     const getCategory = (id: number) => categories.find(c => c.id === id);
     const getFrequencyLabel = (freq: RecurringTransaction['frequency']) => {
-        const map: Record<string, keyof typeof t extends (a:any,b:infer K)=>any ? K : never, string> = {};
-        return t(language, `freq_${freq}` as any);
+        return t(language, `freq_${freq}` as `freq_daily`);
     };
 
     return (

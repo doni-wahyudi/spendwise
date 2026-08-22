@@ -4,10 +4,12 @@ import { db } from '../db/db';
 import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
 import { useStore } from '../store/useStore';
+import { t } from '../i18n/translations';
 
 export default function SummaryCards() {
     const transactions = useLiveQuery(() => db.transactions.toArray());
-    const { dateRange, dateFilterType } = useStore();
+    const { dateRange, dateFilterType, language } = useStore();
+    const locale = language === 'id' ? 'id-ID' : 'en-US';
 
     const summary = useMemo(() => {
         if (!transactions) return { income: 0, expense: 0, balance: 0 };
@@ -34,19 +36,19 @@ export default function SummaryCards() {
 
     // Get period label
     const getPeriodLabel = () => {
-        if (dateFilterType === 'all') return 'All Time';
-        if (dateFilterType === 'custom') return 'Custom Period';
+        if (dateFilterType === 'all') return t(language, 'allTime');
+        if (dateFilterType === 'custom') return t(language, 'customPeriod');
 
         const start = new Date(dateRange.startDate + 'T00:00:00');
         const end = new Date(dateRange.endDate + 'T00:00:00');
 
         // If same month, show just the month name
         if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-            return start.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            return start.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
         }
 
         // Otherwise show range
-        return `${start.toLocaleDateString('id-ID', { month: 'short' })} - ${end.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}`;
+        return `${start.toLocaleDateString(locale, { month: 'short' })} - ${end.toLocaleDateString(locale, { month: 'short', year: 'numeric' })}`;
     };
 
     if (!transactions) {
@@ -68,7 +70,7 @@ export default function SummaryCards() {
                         <TrendingUp size={24} />
                     </div>
                     <div className="card-content">
-                        <span className="card-label">Income</span>
+                        <span className="card-label">{t(language, 'income')}</span>
                         <span className="card-value">{formatCurrency(summary.income)}</span>
                     </div>
                 </div>
@@ -78,7 +80,7 @@ export default function SummaryCards() {
                         <TrendingDown size={24} />
                     </div>
                     <div className="card-content">
-                        <span className="card-label">Expense</span>
+                        <span className="card-label">{t(language, 'expense')}</span>
                         <span className="card-value">{formatCurrency(summary.expense)}</span>
                     </div>
                 </div>
@@ -88,7 +90,7 @@ export default function SummaryCards() {
                         <Wallet size={24} />
                     </div>
                     <div className="card-content">
-                        <span className="card-label">Balance</span>
+                        <span className="card-label">{t(language, 'balance')}</span>
                         <span className="card-value">{formatCurrency(summary.balance)}</span>
                     </div>
                 </div>

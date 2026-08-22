@@ -5,8 +5,11 @@ import { getNextOccurrencePreview } from '../db/recurring';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
 import { formatLocalDate } from '../utils/dateUtils';
 import { Plus, Trash2, Play, Pause, RefreshCw } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { t } from '../i18n/translations';
 
 export default function RecurringManager() {
+    const { language } = useStore();
     const recurring = useLiveQuery(() => db.recurringTransactions.toArray());
     const categories = useLiveQuery(() => db.categories.toArray());
 
@@ -55,7 +58,7 @@ export default function RecurringManager() {
     };
 
     const handleDelete = async (id: number) => {
-        if (confirm('Delete this recurring transaction?')) {
+        if (confirm(t(language, 'deleteTransactionConfirm'))) {
             await db.recurringTransactions.delete(id);
         }
     };
@@ -64,8 +67,8 @@ export default function RecurringManager() {
 
     const getCategory = (id: number) => categories.find(c => c.id === id);
     const getFrequencyLabel = (freq: RecurringTransaction['frequency']) => {
-        const labels = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' };
-        return labels[freq];
+        const map: Record<string, keyof typeof t extends (a:any,b:infer K)=>any ? K : never, string> = {};
+        return t(language, `freq_${freq}` as any);
     };
 
     return (
@@ -73,11 +76,11 @@ export default function RecurringManager() {
             <div className="section-header">
                 <h3>
                     <RefreshCw size={18} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-                    Recurring Transactions
+                    {t(language, 'recurringTransactions')}
                 </h3>
                 <button className="add-category-btn" onClick={() => setShowForm(!showForm)}>
                     <Plus size={16} />
-                    Add
+                    {t(language, 'add')}
                 </button>
             </div>
 
@@ -85,8 +88,8 @@ export default function RecurringManager() {
                 <form onSubmit={handleSubmit} className="recurring-form">
                     <div className="form-row">
                         <div className="segmented-control small">
-                            <button type="button" className={type === 'expense' ? 'active-expense' : ''} onClick={() => setType('expense')}>Expense</button>
-                            <button type="button" className={type === 'income' ? 'active-income' : ''} onClick={() => setType('income')}>Income</button>
+                            <button type="button" className={type === 'expense' ? 'active-expense' : ''} onClick={() => setType('expense')}>{t(language, 'expense')}</button>
+                            <button type="button" className={type === 'income' ? 'active-income' : ''} onClick={() => setType('income')}>{t(language, 'income')}</button>
                         </div>
                     </div>
 
@@ -96,7 +99,7 @@ export default function RecurringManager() {
                             <input
                                 type="text"
                                 inputMode="numeric"
-                                placeholder="Amount"
+                                placeholder={t(language, 'amount')}
                                 value={amount}
                                 onChange={handleAmountChange}
                                 className="amount-input"
@@ -107,30 +110,30 @@ export default function RecurringManager() {
 
                     <div className="form-row two-col">
                         <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-                            <option value="" disabled>Category</option>
+                            <option value="" disabled>{t(language, 'selectCategory')}</option>
                             {categories.filter(c => c.type === type || c.type === 'both').map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
                         <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurringTransaction['frequency'])}>
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="yearly">Yearly</option>
+                            <option value="daily">{t(language, 'freq_daily')}</option>
+                            <option value="weekly">{t(language, 'freq_weekly')}</option>
+                            <option value="monthly">{t(language, 'freq_monthly')}</option>
+                            <option value="yearly">{t(language, 'freq_yearly')}</option>
                         </select>
                     </div>
 
                     <div className="form-row two-col">
                         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                        <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+                        <input type="text" placeholder={t(language, 'noteOptional')} value={note} onChange={(e) => setNote(e.target.value)} />
                     </div>
 
-                    <button type="submit" className="submit-btn">Add Recurring</button>
+                    <button type="submit" className="submit-btn">{t(language, 'addRecurring')}</button>
                 </form>
             )}
 
             {recurring.length === 0 ? (
-                <p className="empty-message">No recurring transactions set up.</p>
+                <p className="empty-message">{t(language, 'noTransactions')}</p>
             ) : (
                 <ul className="recurring-list">
                     {recurring.map(r => {

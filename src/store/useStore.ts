@@ -12,8 +12,8 @@ interface SearchFilter {
 }
 
 interface AppState {
-    activeTab: 'dashboard' | 'accounts' | 'records' | 'settings' | 'ledger';
-    setActiveTab: (tab: 'dashboard' | 'accounts' | 'records' | 'settings' | 'ledger') => void;
+    activeTab: 'dashboard' | 'accounts' | 'records' | 'reports' | 'settings' | 'ledger';
+    setActiveTab: (tab: 'dashboard' | 'accounts' | 'records' | 'reports' | 'settings' | 'ledger') => void;
 
     // Date filter state
     dateFilterType: FilterType;

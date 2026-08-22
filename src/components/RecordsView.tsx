@@ -6,11 +6,13 @@ import { formatCurrency } from '../utils/currency';
 import { formatLocalDate } from '../utils/dateUtils';
 import { Pencil, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
 import SearchFilter from './SearchFilter';
+import { t } from '../i18n/translations';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export default function RecordsView() {
-    const { deleteTransaction, setEditingTransaction, addTransaction, searchFilter } = useStore();
+    const { deleteTransaction, setEditingTransaction, addTransaction, searchFilter, language } = useStore();
+    const locale = language === 'id' ? 'id-ID' : 'en-US';
     const [period, setPeriod] = useState<Period>('daily');
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -28,19 +30,19 @@ export default function RecordsView() {
             case 'daily':
                 start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
                 end = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-                lbl = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                lbl = d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                 break;
             case 'weekly':
                 const dayOfWeek = d.getDay();
                 const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
                 start = new Date(d.getFullYear(), d.getMonth(), diff);
                 end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
-                lbl = `${start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+                lbl = `${start.toLocaleDateString(locale, { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}`;
                 break;
             case 'monthly':
                 start = new Date(d.getFullYear(), d.getMonth(), 1);
                 end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-                lbl = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                lbl = d.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
                 break;
             case 'yearly':
                 start = new Date(d.getFullYear(), 0, 1);
@@ -141,7 +143,7 @@ export default function RecordsView() {
     };
 
     const handleDelete = (id: number) => {
-        if (confirm('Delete this transaction?')) {
+        if (confirm(t(language, 'deleteThisTransaction'))) {
             deleteTransaction(id);
         }
     };
@@ -164,7 +166,7 @@ export default function RecordsView() {
                         className={period === p ? 'active' : ''}
                         onClick={() => setPeriod(p)}
                     >
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                        {t(language, p as 'daily' | 'weekly' | 'monthly' | 'yearly')}
                     </button>
                 ))}
             </div>
@@ -176,7 +178,7 @@ export default function RecordsView() {
                 </button>
                 <div className="period-info">
                     <span className="period-label">{label}</span>
-                    <button onClick={goToToday} className="today-btn">Today</button>
+                    <button onClick={goToToday} className="today-btn">{t(language, 'today')}</button>
                 </div>
                 <button onClick={() => navigate(1)} className="nav-arrow">
                     <ChevronRight size={20} />
@@ -186,15 +188,15 @@ export default function RecordsView() {
             {/* Summary */}
             <div className="period-summary">
                 <div className="summary-item income">
-                    <span className="label">Income</span>
+                    <span className="label">{t(language, 'income')}</span>
                     <span className="value">+{formatCurrency(totals.income)}</span>
                 </div>
                 <div className="summary-item expense">
-                    <span className="label">Expense</span>
+                    <span className="label">{t(language, 'expense')}</span>
                     <span className="value">-{formatCurrency(totals.expense)}</span>
                 </div>
                 <div className="summary-item balance">
-                    <span className="label">Balance</span>
+                    <span className="label">{t(language, 'balance')}</span>
                     <span className={`value ${totals.income - totals.expense >= 0 ? 'positive' : 'negative'}`}>
                         {formatCurrency(totals.income - totals.expense)}
                     </span>
@@ -203,10 +205,10 @@ export default function RecordsView() {
 
             {/* Transactions List */}
             <div className="records-list">
-                <h3>Transactions ({filteredTransactions.length})</h3>
+                <h3>{t(language, 'transactions')} ({filteredTransactions.length})</h3>
                 <SearchFilter />
                 {filteredTransactions.length === 0 ? (
-                    <p className="empty-message">No transactions in this period.</p>
+                    <p className="empty-message">{t(language, 'noTransactionsInPeriod')}</p>
                 ) : (
                     <div className={`scrollable-records ${(period === 'monthly' || period === 'yearly') && filteredTransactions.length > 8 ? 'scrollable' : ''}`}>
                         <ul>

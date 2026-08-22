@@ -6,6 +6,7 @@ import { db } from '../db/db';
 import { useStore } from '../store/useStore';
 import { PieChart, BarChart3, Table } from 'lucide-react';
 import CategorySpendingTable from './CategorySpendingTable';
+import { t } from '../i18n/translations';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -14,7 +15,7 @@ type ChartType = 'doughnut' | 'pie' | 'bar' | 'table';
 export default function SummaryChart() {
     const transactions = useLiveQuery(() => db.transactions.toArray());
     const categories = useLiveQuery(() => db.categories.toArray());
-    const { dateRange } = useStore();
+    const { dateRange, language } = useStore();
 
     const [chartType, setChartType] = useState<ChartType>('doughnut');
 
@@ -55,7 +56,7 @@ export default function SummaryChart() {
     if (!data || data.datasets[0].data.length === 0) {
         return (
             <div className="chart-placeholder">
-                <p>No expenses in this period.</p>
+                <p>{t(language, 'noTransactionsInPeriod')}</p>
             </div>
         );
     }
@@ -87,7 +88,7 @@ export default function SummaryChart() {
     return (
         <div className="summary-chart">
             <div className="chart-header">
-                <h3>Spending Breakdown</h3>
+                <h3>{t(language, 'spendingBreakdown')}</h3>
                 <div className="chart-type-toggle">
                     <button
                         className={chartType === 'doughnut' || chartType === 'pie' ? 'active' : ''}

@@ -3,12 +3,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/currency';
+import { t } from '../i18n/translations';
 import { TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export default function BudgetForecast() {
     const transactions = useLiveQuery(() => db.transactions.toArray());
     const categories = useLiveQuery(() => db.categories.toArray());
-    const { dateRange } = useStore();
+    const { dateRange, language } = useStore();
 
     const forecast = useMemo(() => {
         if (!transactions || !categories) return null;
@@ -101,17 +102,17 @@ export default function BudgetForecast() {
 
             <div className="forecast-summary">
                 <div className="forecast-card">
-                    <span className="label">Spent So Far</span>
+                    <span className="label">{t(language, 'spentSoFar')}</span>
                     <span className="value">{formatCurrency(forecast.totalSpent)}</span>
                 </div>
                 <div className="forecast-card">
-                    <span className="label">Projected Total</span>
+                    <span className="label">{t(language, 'projectedTotal')}</span>
                     <span className={`value ${forecast.willExceedBudget ? 'danger' : ''}`}>
                         {formatCurrency(forecast.projectedTotal)}
                     </span>
                 </div>
                 <div className="forecast-card">
-                    <span className="label">Budget</span>
+                    <span className="label">{t(language, 'budget')}</span>
                     <span className="value">{formatCurrency(forecast.totalBudget)}</span>
                 </div>
             </div>

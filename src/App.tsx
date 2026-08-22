@@ -22,13 +22,15 @@ import AccountsView from './components/AccountsView';
 import TagComparison from './components/TagComparison';
 import LedgerView from './components/LedgerView';
 import ExpensePieChart from './components/ExpensePieChart';
+import ReportsView from './components/ReportsView';
 import { useBudgetAlerts } from './hooks/useBudgetAlerts';
 import { processRecurringTransactions } from './db/recurring';
 import { useToast } from './store/useToast';
-import { CreditCard, PieChart, Settings, Plus, Calendar, X, BookOpen } from 'lucide-react';
+import { CreditCard, PieChart, Settings, Plus, Calendar, X, BookOpen, FileText } from 'lucide-react';
+import { t } from './i18n/translations';
 
 function App() {
-    const { activeTab, setActiveTab, theme, editingTransaction, setEditingTransaction, salaryDay, setSalaryDay } = useStore();
+    const { activeTab, setActiveTab, theme, editingTransaction, setEditingTransaction, salaryDay, setSalaryDay, language } = useStore();
     const [showTransactionModal, setShowTransactionModal] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const { addToast } = useToast();
@@ -150,7 +152,7 @@ function App() {
                         <ExpensePieChart />
                         {/* 3. Recent Transactions */}
                         <div className="dashboard-transactions-section">
-                            <h3>Recent Transactions</h3>
+                            <h3>{t(language, 'recentTransactions')}</h3>
                             <SearchFilter />
                             <div className="scrollable-transactions">
                                 <TransactionList limit={5} useFilter={true} useSearch={true} />
@@ -170,6 +172,21 @@ function App() {
                         <BudgetProgress />
                         {/* 9. Balance Trend (Income vs Expense) */}
                         <TrendChart />
+                        {/* 10. Quick Report Navigation Card */}
+                        <div className="dashboard-report-banner" onClick={() => setActiveTab('reports')}>
+                            <div className="report-banner-content">
+                                <div className="report-banner-icon">
+                                    <FileText size={20} />
+                                </div>
+                                <div className="report-banner-text">
+                                    <h4>{t(language, 'viewFullReport')}</h4>
+                                    <p>{t(language, 'viewFullReportDesc')}</p>
+                                </div>
+                            </div>
+                            <button className="report-banner-btn">
+                                {t(language, 'openReport')}
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -179,6 +196,10 @@ function App() {
 
                 {activeTab === 'records' && (
                     <RecordsView />
+                )}
+
+                {activeTab === 'reports' && (
+                    <ReportsView />
                 )}
 
                 {activeTab === 'ledger' && (
@@ -200,7 +221,7 @@ function App() {
                 <div className="modal-overlay" onClick={handleCloseModal}>
                     <div className="modal-content transaction-modal compact" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>{editingTransaction ? 'Edit Transaction' : 'Add Transaction'}</h3>
+                            <h3>{editingTransaction ? t(language, 'editTransaction') : t(language, 'addTransaction')}</h3>
                             <button onClick={handleCloseModal}>
                                 <X size={20} />
                             </button>
@@ -215,7 +236,7 @@ function App() {
                 <div className="modal-overlay settings-modal-overlay" onClick={() => setShowSettings(false)}>
                     <div className="modal-content settings-modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3><Settings size={18} /> Settings</h3>
+                            <h3><Settings size={18} /> {t(language, 'settings')}</h3>
                             <button onClick={() => setShowSettings(false)}>
                                 <X size={20} />
                             </button>
@@ -231,28 +252,35 @@ function App() {
                     onClick={() => setActiveTab('dashboard')}
                 >
                     <PieChart size={20} />
-                    <span>Dashboard</span>
+                    <span>{t(language, 'dashboard')}</span>
                 </button>
                 <button
                     className={activeTab === 'accounts' ? 'active' : ''}
                     onClick={() => setActiveTab('accounts')}
                 >
                     <CreditCard size={20} />
-                    <span>Accounts</span>
+                    <span>{t(language, 'accounts')}</span>
                 </button>
                 <button
                     className={activeTab === 'records' ? 'active' : ''}
                     onClick={() => setActiveTab('records')}
                 >
                     <Calendar size={20} />
-                    <span>Records</span>
+                    <span>{t(language, 'records')}</span>
+                </button>
+                <button
+                    className={activeTab === 'reports' ? 'active' : ''}
+                    onClick={() => setActiveTab('reports')}
+                >
+                    <FileText size={20} />
+                    <span>{t(language, 'reports')}</span>
                 </button>
                 <button
                     className={activeTab === 'ledger' ? 'active' : ''}
                     onClick={() => setActiveTab('ledger')}
                 >
                     <BookOpen size={20} />
-                    <span>Ledger</span>
+                    <span>{t(language, 'ledger')}</span>
                 </button>
             </nav>
         </div>

@@ -3,11 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { formatCurrency } from '../utils/currency';
 import { useStore } from '../store/useStore';
+import { t } from '../i18n/translations';
 
 export default function BudgetProgress() {
     const transactions = useLiveQuery(() => db.transactions.toArray());
     const categories = useLiveQuery(() => db.categories.toArray());
-    const { dateRange } = useStore();
+    const { dateRange, language } = useStore();
 
     const budgetData = useMemo(() => {
         if (!transactions || !categories) return [];
@@ -52,7 +53,7 @@ export default function BudgetProgress() {
 
     return (
         <div className="budget-progress-section">
-            <h3>Budget Progress</h3>
+            <h3>{t(language, 'budgetProgress')}</h3>
             <div className="budget-list">
                 {budgetData.map(budget => (
                     <div key={budget.id} className={`budget-item ${budget.isWarning ? 'warning' : ''} ${budget.isOver ? 'over' : ''}`}>

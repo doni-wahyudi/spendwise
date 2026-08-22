@@ -5,6 +5,7 @@ import { Pencil, Copy } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
 import { formatLocalDate } from '../utils/dateUtils';
 import { useState, useRef } from 'react';
+import { t } from '../i18n/translations';
 
 interface Props {
     limit?: number;
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export default function TransactionList({ limit, useFilter = false, useSearch = false }: Props) {
-    const { deleteTransaction, setEditingTransaction, setActiveTab, dateRange, addTransaction, searchFilter } = useStore();
+    const { deleteTransaction, setEditingTransaction, setActiveTab, dateRange, addTransaction, searchFilter, language } = useStore();
     const [swipingId, setSwipingId] = useState<number | null>(null);
     const touchStartX = useRef(0);
 
@@ -99,7 +100,7 @@ export default function TransactionList({ limit, useFilter = false, useSearch = 
     };
 
     const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this transaction?')) {
+        if (confirm(t(language, 'deleteTransactionConfirm'))) {
             deleteTransaction(id);
         }
     };
@@ -130,20 +131,22 @@ export default function TransactionList({ limit, useFilter = false, useSearch = 
         setSwipingId(null);
     };
 
-    const title = useSearch ? `Transactions (${transactions.length})` : (useFilter ? 'Transactions' : 'Recent Transactions');
+    const title = useSearch
+        ? `${t(language, 'transactions')} (${transactions.length})`
+        : (useFilter ? t(language, 'transactions') : t(language, 'recentTransactions'));
 
     return (
         <div className="transaction-list">
             <h3>{title}</h3>
             {transactions.length === 0 ? (
                 <div className="empty-state">
-                    <p className="empty-message">No transactions found.</p>
+                    <p className="empty-message">{t(language, 'noTransactions')}</p>
                     {!useSearch && (
                         <button
                             className="empty-state-cta"
                             onClick={() => setActiveTab('dashboard')}
                         >
-                            + Add Your First Transaction
+                            {t(language, 'addFirstTransaction')}
                         </button>
                     )}
                 </div>

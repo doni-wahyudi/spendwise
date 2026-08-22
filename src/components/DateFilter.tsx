@@ -2,20 +2,10 @@ import { useStore } from '../store/useStore';
 import { type FilterType } from '../utils/dateUtils';
 import { Calendar, ChevronDown, Briefcase } from 'lucide-react';
 import { useState, useEffect } from 'react';
-
-const FILTER_OPTIONS: { value: FilterType; label: string; icon?: React.ReactNode }[] = [
-    { value: 'salary', label: 'Salary Period', icon: <Briefcase size={14} /> },
-    { value: 'week', label: 'This Week' },
-    { value: 'month', label: 'This Month' },
-    { value: 'lastMonth', label: 'Last Month' },
-    { value: '3months', label: 'Last 3 Months' },
-    { value: 'year', label: 'This Year' },
-    { value: 'all', label: 'All Time' },
-    { value: 'custom', label: 'Custom Range' },
-];
+import { t } from '../i18n/translations';
 
 export default function DateFilter() {
-    const { dateFilterType, dateRange, setDateFilter, salaryDay } = useStore();
+    const { dateFilterType, dateRange, setDateFilter, salaryDay, language } = useStore();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showCustom, setShowCustom] = useState(false);
     const [customStart, setCustomStart] = useState('');
@@ -27,6 +17,17 @@ export default function DateFilter() {
             setDateFilter('salary');
         }
     }, [salaryDay]);
+
+    const filterOptions: { value: FilterType; label: string; icon?: React.ReactNode }[] = [
+        { value: 'salary', label: `${t(language, 'salary')} ${t(language, 'customPeriod')}`, icon: <Briefcase size={14} /> },
+        { value: 'week', label: t(language, 'weekly') },
+        { value: 'month', label: t(language, 'thisMonth') },
+        { value: 'lastMonth', label: t(language, 'lastMonth') },
+        { value: '3months', label: language === 'id' ? '3 Bulan Terakhir' : 'Last 3 Months' },
+        { value: 'year', label: language === 'id' ? 'Tahun Ini' : 'This Year' },
+        { value: 'all', label: t(language, 'allTime') },
+        { value: 'custom', label: t(language, 'customRange') },
+    ];
 
     const handleFilterChange = (filterType: FilterType) => {
         if (filterType === 'custom') {
@@ -46,7 +47,7 @@ export default function DateFilter() {
         }
     };
 
-    const currentLabel = FILTER_OPTIONS.find(o => o.value === dateFilterType)?.label || 'This Month';
+    const currentLabel = filterOptions.find(o => o.value === dateFilterType)?.label || t(language, 'thisMonth');
 
     return (
         <div className="date-filter">
@@ -61,7 +62,7 @@ export default function DateFilter() {
 
             {showDropdown && (
                 <div className="date-filter-dropdown">
-                    {FILTER_OPTIONS.map(option => (
+                    {filterOptions.map(option => (
                         <button
                             key={option.value}
                             className={`filter-option ${dateFilterType === option.value ? 'active' : ''}`}
@@ -80,19 +81,19 @@ export default function DateFilter() {
                             type="date"
                             value={customStart}
                             onChange={(e) => setCustomStart(e.target.value)}
-                            placeholder="Start Date"
+                            placeholder={t(language, 'startDate')}
                         />
-                        <span>to</span>
+                        <span>–</span>
                         <input
                             type="date"
                             value={customEnd}
                             onChange={(e) => setCustomEnd(e.target.value)}
-                            placeholder="End Date"
+                            placeholder={t(language, 'endDate')}
                         />
                     </div>
                     <div className="custom-range-actions">
-                        <button onClick={() => setShowCustom(false)} className="cancel-btn">Cancel</button>
-                        <button onClick={handleCustomApply} className="apply-btn">Apply</button>
+                        <button onClick={() => setShowCustom(false)} className="cancel-btn">{t(language, 'cancel')}</button>
+                        <button onClick={handleCustomApply} className="apply-btn">{t(language, 'apply')}</button>
                     </div>
                 </div>
             )}

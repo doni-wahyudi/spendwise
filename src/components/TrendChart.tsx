@@ -4,12 +4,13 @@ import { Bar, Line } from 'react-chartjs-2';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useStore } from '../store/useStore';
+import { t } from '../i18n/translations';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
 
 export default function TrendChart() {
     const transactions = useLiveQuery(() => db.transactions.toArray());
-    const { dateRange } = useStore();
+    const { dateRange, language } = useStore();
 
     const chartData = useMemo(() => {
         if (!transactions) return null;
@@ -122,14 +123,14 @@ export default function TrendChart() {
     return (
         <div className="trend-charts">
             <div className="chart-section">
-                <h4>Income vs Expense</h4>
+                <h4>{t(language, 'incomeVsExpense')}</h4>
                 <div className="chart-wrapper">
                     <Bar data={barData} options={options} />
                 </div>
             </div>
 
             <div className="chart-section">
-                <h4>Balance Trend</h4>
+                <h4>{t(language, 'balanceTrend')}</h4>
                 <div className="chart-wrapper">
                     <Line data={lineData} options={options} />
                 </div>

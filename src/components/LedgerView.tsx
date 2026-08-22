@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type LedgerItem } from '../db/db';
 import { useToast } from '../store/useToast';
+import { useStore } from '../store/useStore';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
 import { BookOpen, Plus, Trash2, Edit2, Check, X, ArrowDownLeft, ArrowUpRight, Calendar } from 'lucide-react';
+import { t } from '../i18n/translations';
 
 export default function LedgerView() {
     const { addToast } = useToast();
+    const { language } = useStore();
     const ledgerItems = useLiveQuery(() => db.ledger.orderBy('createdAt').reverse().toArray());
 
     const [activeTab, setActiveTab] = useState<'receivable' | 'payable'>('receivable');
@@ -52,10 +55,10 @@ export default function LedgerView() {
 
         if (editingId) {
             await db.ledger.update(editingId, data);
-            addToast('Updated successfully', 'success');
+            addToast(t(language, 'transactionUpdated'), 'success');
         } else {
             await db.ledger.add(data);
-            addToast('Added successfully', 'success');
+            addToast(t(language, 'transactionAdded'), 'success');
         }
         resetForm();
     };
@@ -71,9 +74,9 @@ export default function LedgerView() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Delete this entry?')) return;
+        if (!confirm(t(language, 'deleteTransactionConfirm'))) return;
         await db.ledger.delete(id);
-        addToast('Deleted', 'info');
+        addToast(t(language, 'delete') + ' ✓', 'info');
     };
 
     const handleTogglePaid = async (item: LedgerItem) => {
@@ -81,7 +84,7 @@ export default function LedgerView() {
             isPaid: !item.isPaid,
             paidAt: !item.isPaid ? Date.now() : undefined
         });
-        addToast(item.isPaid ? 'Marked as unpaid' : 'Marked as paid', 'success');
+        addToast(item.isPaid ? t(language, 'markAsUnpaid') : t(language, 'markAsPaid'), 'success');
     };
 
     const filteredItems = ledgerItems?.filter(i => i.type === activeTab) || [];
@@ -163,11 +166,11 @@ export default function LedgerView() {
 
                         {paidItems.length > 0 && (
                             <>
-                                <h4 className="paid-divider">Paid</h4>
+                                <h4 className="paid-divider">{t(language, 'paid')}</h4>
                                 {paidItems.map(item => (
                                     <div key={item.id} className="ledger-item paid">
                                         <div className="item-checkbox">
-                                            <button onClick={() => handleTogglePaid(item)} title="Mark as unpaid">
+                                            <button onClick={() => handleTogglePaid(item)} title={t(language, 'markAsUnpaid')}>
                                                 <div className="checkbox checked"><Check size={12} /></div>
                                             </button>
                                         </div>
@@ -196,33 +199,33 @@ export default function LedgerView() {
                             <button onClick={resetForm}><X size={20} /></button>
                         </div>
                         <form onSubmit={handleSubmit}>
-                            <label>Name</label>
+                            <label>{language === 'id' ? 'Nama' : 'Name'}</label>
                             <input
                                 type="text"
-                                placeholder="Person or company name"
+                                placeholder={t(language, 'personOrCompany')}
                                 value={personName}
                                 onChange={e => setPersonName(e.target.value)}
                                 autoFocus
                             />
 
-                            <label>Amount</label>
+                            <label>{t(language, 'amount')}</label>
                             <input
                                 type="text"
                                 inputMode="numeric"
-                                placeholder="Amount"
+                                placeholder={t(language, 'amount')}
                                 value={amount}
                                 onChange={e => setAmount(formatNumber(e.target.value))}
                             />
 
-                            <label>Note (optional)</label>
+                            <label>{t(language, 'noteOptional')}</label>
                             <input
                                 type="text"
-                                placeholder="e.g., For dinner last week"
+                                placeholder={t(language, 'ledgerNote')}
                                 value={note}
                                 onChange={e => setNote(e.target.value)}
                             />
 
-                            <label>Due Date (optional)</label>
+                            <label>{t(language, 'deadline')}</label>
                             <input
                                 type="date"
                                 value={dueDate}
@@ -231,7 +234,7 @@ export default function LedgerView() {
 
                             <button type="submit" className="submit-btn">
                                 <Check size={16} />
-                                {editingId ? 'Update' : 'Add'}
+                                {editingId ? t(language, 'updateTransaction') : t(language, 'add')}
                             </button>
                         </form>
                     </div>

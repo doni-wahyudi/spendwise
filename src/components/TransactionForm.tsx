@@ -8,13 +8,14 @@ import { formatLocalDate } from '../utils/dateUtils';
 import { scanReceipt } from '../utils/receiptScanner';
 import TagInput from './TagInput';
 import { Camera, Loader, Upload } from 'lucide-react';
+import { t } from '../i18n/translations';
 
 interface TransactionFormProps {
     onSuccess?: () => void;
 }
 
 export default function TransactionForm({ onSuccess }: TransactionFormProps) {
-    const { addTransaction, updateTransaction, editingTransaction, setEditingTransaction, aiProvider, aiApiKey, aiModel, openaiBaseUrl } = useStore();
+    const { addTransaction, updateTransaction, editingTransaction, setEditingTransaction, aiProvider, aiApiKey, aiModel, openaiBaseUrl, language } = useStore();
     const { addToast } = useToast();
     const categories = useLiveQuery(() => db.categories.toArray());
     const accounts = useLiveQuery(() => db.accounts.toArray());
@@ -69,12 +70,12 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
         const numericAmount = parseFormattedNumber(amount);
 
         if (numericAmount <= 0) {
-            setError('Amount must be greater than 0');
+            setError(t(language, 'amountError'));
             return;
         }
 
         if (!categoryId) {
-            setError('Please select a category');
+            setError(t(language, 'categoryError'));
             return;
         }
 
@@ -88,7 +89,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                 date,
                 tags: tags.length > 0 ? tags : undefined
             });
-            addToast('Transaction updated!', 'success');
+            addToast(t(language, 'transactionUpdated'), 'success');
         } else {
             await addTransaction({
                 amount: numericAmount,
@@ -99,7 +100,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                 date,
                 tags: tags.length > 0 ? tags : undefined
             });
-            addToast('Transaction added!', 'success');
+            addToast(t(language, 'transactionAdded'), 'success');
         }
 
         resetForm();
@@ -126,7 +127,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
         if (!file) return;
 
         if (!aiApiKey) {
-            addToast('Please configure API key in Settings', 'error');
+            addToast(t(language, 'configureApiKey'), 'error');
             return;
         }
 
@@ -157,11 +158,11 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                 }
             }
 
-            addToast('Receipt scanned successfully!', 'success');
+            addToast(t(language, 'scanReceipt') + ' ✓', 'success');
         } catch (err) {
             console.error('Receipt scan error:', err);
-            setError(err instanceof Error ? err.message : 'Failed to scan receipt');
-            addToast('Failed to scan receipt', 'error');
+            setError(err instanceof Error ? err.message : t(language, 'failedToScan'));
+            addToast(t(language, 'failedToScan'), 'error');
         } finally {
             setIsScanning(false);
             // Reset file input
@@ -180,8 +181,8 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
         <form onSubmit={handleSubmit} className="transaction-form">
             {isEditing && (
                 <div className="edit-banner">
-                    Editing Transaction
-                    <button type="button" onClick={handleCancel} className="cancel-edit-btn">Cancel</button>
+                    {t(language, 'editingTransactionBanner')}
+                    <button type="button" onClick={handleCancel} className="cancel-edit-btn">{t(language, 'cancel')}</button>
                 </div>
             )}
 
@@ -194,14 +195,14 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                         className={type === 'expense' ? 'active-expense' : ''}
                         onClick={() => setType('expense')}
                     >
-                        Expense
+                        {t(language, 'expense')}
                     </button>
                     <button
                         type="button"
                         className={type === 'income' ? 'active-income' : ''}
                         onClick={() => setType('income')}
                     >
-                        Income
+                        {t(language, 'income')}
                     </button>
                 </div>
             </div>
@@ -223,7 +224,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                         className="scan-receipt-btn"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isScanning}
-                        title="Take Photo"
+                        title={t(language, 'scanReceipt')}
                     >
                         {isScanning ? <Loader size={18} className="spin" /> : <Camera size={18} />}
                     </button>
@@ -232,7 +233,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                         className="scan-receipt-btn upload-btn"
                         onClick={() => galleryInputRef.current?.click()}
                         disabled={isScanning}
-                        title="Upload Image"
+                        title={t(language, 'scanReceipt')}
                     >
                         <Upload size={18} />
                     </button>
@@ -262,7 +263,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                     onChange={(e) => setCategoryId(e.target.value)}
                     required
                 >
-                    <option value="" disabled>Category</option>
+                    <option value="" disabled>{t(language, 'selectCategory')}</option>
                     {filteredCategories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -288,7 +289,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                 />
                 <input
                     type="text"
-                    placeholder="Note (Optional)"
+                    placeholder={t(language, 'noteOptional')}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                 />
@@ -299,7 +300,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
             </div>
 
             <button type="submit" className="submit-btn">
-                {isEditing ? 'Update Transaction' : 'Add Transaction'}
+                {isEditing ? t(language, 'updateTransaction') : t(language, 'addTransaction')}
             </button>
         </form>
     );

@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import { useStore } from '../store/useStore';
 import { formatCurrency } from '../utils/currency';
+import { t } from '../i18n/translations';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function HeatMapCalendar() {
+    const { language } = useStore();
     const transactions = useLiveQuery(() => db.transactions.toArray());
     const [monthOffset, setMonthOffset] = useState(0);
 
@@ -136,29 +139,29 @@ export default function HeatMapCalendar() {
             {stats && stats.total > 0 && (
                 <div className="heatmap-stats">
                     <div className="stat">
-                        <span className="label">Total</span>
+                        <span className="label">{t(language, 'total')}</span>
                         <span className="value">{formatCurrency(stats.total)}</span>
                     </div>
                     <div className="stat">
-                        <span className="label">Avg/day</span>
+                        <span className="label">{language === 'id' ? 'Rata-rata/hari' : 'Avg/day'}</span>
                         <span className="value">{formatCurrency(stats.avgDaily)}</span>
                     </div>
                     <div className="stat">
-                        <span className="label">Peak</span>
+                        <span className="label">{t(language, 'peak')}</span>
                         <span className="value">Day {stats.highestDay}</span>
                     </div>
                 </div>
             )}
 
             <div className="heatmap-legend">
-                <span>Less</span>
+                <span>{t(language, 'less')}</span>
                 <div className="legend-scale">
                     <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.2)' }} />
                     <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.4)' }} />
                     <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.4)' }} />
                     <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.7)' }} />
                 </div>
-                <span>More</span>
+                <span>{t(language, 'more')}</span>
             </div>
         </div>
     );

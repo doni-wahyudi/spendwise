@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
+import { t } from '../i18n/translations';
+import { useStore } from '../store/useStore';
 
 type ReportPeriod = 'monthly' | 'yearly';
 
@@ -15,6 +17,8 @@ interface MonthData {
 }
 
 export default function Reports() {
+    const { language } = useStore();
+    const { setActiveTab } = useStore();
     const [period, setPeriod] = useState<ReportPeriod>('monthly');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
 
@@ -94,20 +98,28 @@ export default function Reports() {
             <div className="section-header">
                 <h3>
                     <FileText size={18} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-                    Reports
+                    Reports Snapshot
                 </h3>
-                <div className="period-toggle">
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div className="period-toggle">
+                        <button
+                            className={period === 'monthly' ? 'active' : ''}
+                            onClick={() => setPeriod('monthly')}
+                        >
+                            Monthly
+                        </button>
+                        <button
+                            className={period === 'yearly' ? 'active' : ''}
+                            onClick={() => setPeriod('yearly')}
+                        >
+                            Yearly
+                        </button>
+                    </div>
                     <button
-                        className={period === 'monthly' ? 'active' : ''}
-                        onClick={() => setPeriod('monthly')}
+                        className="open-full-report-action-btn"
+                        onClick={() => setActiveTab('reports')}
                     >
-                        Monthly
-                    </button>
-                    <button
-                        className={period === 'yearly' ? 'active' : ''}
-                        onClick={() => setPeriod('yearly')}
-                    >
-                        Yearly
+                        Full Report <ExternalLink size={13} />
                     </button>
                 </div>
             </div>
@@ -115,15 +127,15 @@ export default function Reports() {
             {/* Summary Card */}
             <div className="report-summary">
                 <div className="summary-item">
-                    <span className="label">Total Income</span>
+                    <span className="label">{t(language, 'totalIncome')}</span>
                     <span className="value income">+{formatCurrency(totals.income)}</span>
                 </div>
                 <div className="summary-item">
-                    <span className="label">Total Expense</span>
+                    <span className="label">{t(language, 'totalExpense')}</span>
                     <span className="value expense">-{formatCurrency(totals.expense)}</span>
                 </div>
                 <div className="summary-item">
-                    <span className="label">Net Balance</span>
+                    <span className="label">{t(language, 'netBalance')}</span>
                     <span className={`value ${totals.balance >= 0 ? 'income' : 'expense'}`}>
                         {formatCurrency(totals.balance)}
                     </span>
@@ -132,7 +144,7 @@ export default function Reports() {
 
             {/* Period List */}
             {reportData.length === 0 ? (
-                <p className="empty-message">No data available.</p>
+                <p className="empty-message">{t(language, 'noData')}</p>
             ) : (
                 <ul className="report-list">
                     {reportData.map(item => (
@@ -153,7 +165,7 @@ export default function Reports() {
 
                             {expandedMonth === item.month && (
                                 <div className="report-detail">
-                                    <h5>Top Expenses</h5>
+                                    <h5>{t(language, 'topExpenses')}</h5>
                                     {Object.entries(item.categories)
                                         .sort(([, a], [, b]) => b - a)
                                         .slice(0, 5)

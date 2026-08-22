@@ -21,6 +21,7 @@ import CloudBackup from './CloudBackup';
 import TagManager from './TagManager';
 import { seedDatabase } from '../db/seed';
 import { seedAccounts } from '../db/seedAccounts';
+import { t } from '../i18n/translations';
 
 type SettingsTab = 'appearance' | 'features' | 'data' | 'categories';
 
@@ -30,7 +31,7 @@ const PRESET_COLORS = [
 ];
 
 export default function SettingsView() {
-    const { addCategory } = useStore();
+    const { addCategory, language } = useStore();
     const { addToast } = useToast();
     const categories = useLiveQuery(() => db.categories.toArray());
     const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
@@ -66,7 +67,7 @@ export default function SettingsView() {
         setNewName('');
         setNewColor('#6366f1');
         setShowNewCategory(false);
-        addToast('Category added!', 'success');
+        addToast(t(language, 'add') + ' ' + t(language, 'categories') + ' ✓', 'success');
     };
 
     const handleStartEditCategory = (cat: Category) => {
@@ -93,13 +94,13 @@ export default function SettingsView() {
         });
 
         setEditingCategory(null);
-        addToast('Category updated!', 'success');
+        addToast(t(language, 'edit') + ' ' + t(language, 'categories') + ' ✓', 'success');
     };
 
     const handleDeleteCategory = async (id: number) => {
-        if (confirm('Delete this category? Transactions using it will keep their category reference.')) {
+        if (confirm(t(language, 'deleteConfirm'))) {
             await db.categories.delete(id);
-            addToast('Category deleted', 'info');
+            addToast(t(language, 'delete') + ' ✓', 'info');
         }
     };
 
@@ -177,33 +178,21 @@ export default function SettingsView() {
         <div className="settings-view tabbed">
             {/* Tab Navigation */}
             <div className="settings-tabs">
-                <button
-                    className={activeTab === 'appearance' ? 'active' : ''}
-                    onClick={() => setActiveTab('appearance')}
-                >
+                <button className={activeTab === 'appearance' ? 'active' : ''} onClick={() => setActiveTab('appearance')}>
                     <Palette size={16} />
-                    <span>Appearance</span>
+                    <span>{t(language, 'appearance')}</span>
                 </button>
-                <button
-                    className={activeTab === 'features' ? 'active' : ''}
-                    onClick={() => setActiveTab('features')}
-                >
+                <button className={activeTab === 'features' ? 'active' : ''} onClick={() => setActiveTab('features')}>
                     <Sparkles size={16} />
-                    <span>Features</span>
+                    <span>{t(language, 'features')}</span>
                 </button>
-                <button
-                    className={activeTab === 'data' ? 'active' : ''}
-                    onClick={() => setActiveTab('data')}
-                >
+                <button className={activeTab === 'data' ? 'active' : ''} onClick={() => setActiveTab('data')}>
                     <Database size={16} />
-                    <span>Data</span>
+                    <span>{t(language, 'data')}</span>
                 </button>
-                <button
-                    className={activeTab === 'categories' ? 'active' : ''}
-                    onClick={() => setActiveTab('categories')}
-                >
+                <button className={activeTab === 'categories' ? 'active' : ''} onClick={() => setActiveTab('categories')}>
                     <FolderOpen size={16} />
-                    <span>Categories</span>
+                    <span>{t(language, 'categories')}</span>
                 </button>
             </div>
 
@@ -247,16 +236,16 @@ export default function SettingsView() {
 
                         {/* Data Export Section */}
                         <section className="settings-section">
-                            <h3>Export Data</h3>
-                            <p className="settings-description">Download all your transactions and categories.</p>
+                            <h3>{t(language, 'exportData')}</h3>
+                            <p className="settings-description">{t(language, 'exportDataDesc')}</p>
                             <div className="export-buttons">
                                 <button className="export-btn" onClick={() => exportData('json')}>
                                     <Download size={16} />
-                                    Export JSON
+                                    {t(language, 'exportJSON')}
                                 </button>
                                 <button className="export-btn" onClick={() => exportData('csv')}>
                                     <Download size={16} />
-                                    Export CSV
+                                    {t(language, 'exportCSV')}
                                 </button>
                             </div>
                         </section>
@@ -266,28 +255,28 @@ export default function SettingsView() {
 
                         {/* Sample Data Section */}
                         <section className="settings-section">
-                            <h3>Sample Data</h3>
-                            <p className="settings-description">Generate sample data for testing (will add to existing data).</p>
+                            <h3>{t(language, 'sampleData')}</h3>
+                            <p className="settings-description">{t(language, 'sampleDataDesc')}</p>
                             <div className="export-buttons">
                                 <button className="export-btn" onClick={async () => {
                                     await seedDatabase();
-                                    alert('Sample transactions added!');
+                                    addToast(t(language, 'sampleAdded'), 'success');
                                 }}>
-                                    <Plus size={16} /> Add Sample Transactions
+                                    <Plus size={16} /> {t(language, 'addSampleTransactions')}
                                 </button>
                                 <button className="export-btn" onClick={async () => {
                                     await seedAccounts();
-                                    alert('Sample accounts added!');
+                                    addToast(t(language, 'sampleAdded'), 'success');
                                 }}>
-                                    <Plus size={16} /> Add Sample Accounts
+                                    <Plus size={16} /> {t(language, 'addSampleAccounts')}
                                 </button>
                             </div>
                         </section>
 
                         {/* Danger Zone */}
                         <section className="settings-section danger-zone">
-                            <h3><AlertTriangle size={16} /> Danger Zone</h3>
-                            <p className="settings-description">Permanently delete all your data.</p>
+                            <h3><AlertTriangle size={16} /> {t(language, 'dangerZone')}</h3>
+                            <p className="settings-description">{t(language, 'clearDataDesc')}</p>
                             <button
                                 className="danger-btn"
                                 onClick={async () => {
@@ -326,7 +315,7 @@ export default function SettingsView() {
                                 <h3>Categories</h3>
                                 <button className="add-category-btn" onClick={() => setShowNewCategory(!showNewCategory)}>
                                     <Plus size={16} />
-                                    Add Category
+                                    {t(language, 'addCategory')}
                                 </button>
                             </div>
 
@@ -334,14 +323,15 @@ export default function SettingsView() {
                                 <form onSubmit={handleAddCategory} className="new-category-form">
                                     <input
                                         type="text"
-                                        placeholder="Category name"
+                                        placeholder={t(language, 'categoryName')}
                                         value={newName}
                                         onChange={(e) => setNewName(e.target.value)}
                                         required
+                                        autoFocus
                                     />
                                     <select value={newType} onChange={(e) => setNewType(e.target.value as 'income' | 'expense')}>
-                                        <option value="expense">Expense</option>
-                                        <option value="income">Income</option>
+                                        <option value="expense">{t(language, 'expense')}</option>
+                                        <option value="income">{t(language, 'income')}</option>
                                     </select>
                                     <input
                                         type="color"
@@ -358,7 +348,7 @@ export default function SettingsView() {
                                 <div className="modal-overlay" onClick={() => setEditingCategory(null)}>
                                     <div className="modal-content compact" onClick={e => e.stopPropagation()}>
                                         <div className="modal-header">
-                                            <h3>Edit Category</h3>
+                                            <h3>{t(language, 'editCategory')}</h3>
                                             <button onClick={() => setEditingCategory(null)} className="close-btn">
                                                 <X size={20} />
                                             </button>
@@ -442,14 +432,14 @@ export default function SettingsView() {
                             )}
 
                             <div className="category-group">
-                                <h4>Expense Categories</h4>
+                                <h4>{t(language, 'expenseCategories')}</h4>
                                 <ul className="category-list">
                                     {expenseCategories.map(cat => (
                                         <li key={cat.id} className="category-item">
                                             <div className="category-info">
                                                 <span className="category-color" style={{ backgroundColor: cat.color }} />
                                                 <span className="category-name">{cat.name}</span>
-                                                {cat.isDefault && <span className="default-badge">Default</span>}
+                                                {cat.isDefault && <span className="default-badge">{t(language, 'defaultBadge')}</span>}
                                             </div>
                                             <div className="category-actions">
                                                 {editingBudget === cat.id ? (
@@ -462,7 +452,7 @@ export default function SettingsView() {
                                                             value={budgetValue}
                                                             onChange={handleBudgetChange}
                                                         />
-                                                        <button onClick={() => handleSetBudget(cat.id)} className="save-budget-btn">Save</button>
+                                                        <button onClick={() => handleSetBudget(cat.id)} className="save-budget-btn">{t(language, 'save')}</button>
                                                         <button onClick={() => setEditingBudget(null)} className="cancel-btn">×</button>
                                                     </div>
                                                 ) : (
@@ -495,14 +485,14 @@ export default function SettingsView() {
                             </div>
 
                             <div className="category-group">
-                                <h4>Income Categories</h4>
+                                <h4>{t(language, 'incomeCategories')}</h4>
                                 <ul className="category-list">
                                     {incomeCategories.map(cat => (
                                         <li key={cat.id} className="category-item">
                                             <div className="category-info">
                                                 <span className="category-color" style={{ backgroundColor: cat.color }} />
                                                 <span className="category-name">{cat.name}</span>
-                                                {cat.isDefault && <span className="default-badge">Default</span>}
+                                                {cat.isDefault && <span className="default-badge">{t(language, 'defaultBadge')}</span>}
                                             </div>
                                             <div className="category-actions">
                                                 <button

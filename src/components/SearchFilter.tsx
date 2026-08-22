@@ -2,18 +2,18 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useStore } from '../store/useStore';
 import { Search, X } from 'lucide-react';
+import { t } from '../i18n/translations';
 
 export default function SearchFilter() {
-    const { searchFilter, setSearchFilter, clearSearchFilter } = useStore();
+    const { searchFilter, setSearchFilter, clearSearchFilter, language } = useStore();
     const categories = useLiveQuery(() => db.categories.toArray());
 
-    // Get all tags from tags table and transactions
     const allTags = useLiveQuery(async () => {
         const tagDefs = await db.tags.toArray();
         const txs = await db.transactions.toArray();
         const tagSet = new Set<string>();
-        tagDefs.forEach(t => tagSet.add(t.name));
-        txs.forEach(tx => tx.tags?.forEach(t => tagSet.add(t)));
+        tagDefs.forEach(tg => tagSet.add(tg.name));
+        txs.forEach(tx => tx.tags?.forEach(tg => tagSet.add(tg)));
         return Array.from(tagSet).sort();
     }, []);
 
@@ -25,13 +25,13 @@ export default function SearchFilter() {
                 <Search size={18} className="search-icon" />
                 <input
                     type="text"
-                    placeholder="Search note, category, tag, amount..."
+                    placeholder={t(language, 'searchPlaceholder')}
                     value={searchFilter.searchText}
                     onChange={(e) => setSearchFilter({ searchText: e.target.value })}
                     className="search-input"
                 />
                 {hasActiveFilter && (
-                    <button onClick={clearSearchFilter} className="clear-search-btn" title="Clear filters">
+                    <button onClick={clearSearchFilter} className="clear-search-btn" title={t(language, 'clearFilters')}>
                         <X size={16} />
                     </button>
                 )}
@@ -43,7 +43,7 @@ export default function SearchFilter() {
                     onChange={(e) => setSearchFilter({ categoryId: e.target.value ? parseInt(e.target.value) : null })}
                     className="filter-select"
                 >
-                    <option value="">All Categories</option>
+                    <option value="">{t(language, 'allCategories')}</option>
                     {categories?.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
@@ -54,7 +54,7 @@ export default function SearchFilter() {
                     onChange={(e) => setSearchFilter({ tag: e.target.value || null })}
                     className="filter-select tag-filter"
                 >
-                    <option value="">All Tags</option>
+                    <option value="">{t(language, 'allTags')}</option>
                     {allTags?.map(tag => (
                         <option key={tag} value={tag}>#{tag}</option>
                     ))}
@@ -66,19 +66,19 @@ export default function SearchFilter() {
                     className={searchFilter.type === 'all' ? 'active' : ''}
                     onClick={() => setSearchFilter({ type: 'all' })}
                 >
-                    All
+                    {t(language, 'allTypes')}
                 </button>
                 <button
                     className={searchFilter.type === 'income' ? 'active income' : ''}
                     onClick={() => setSearchFilter({ type: 'income' })}
                 >
-                    Income
+                    {t(language, 'income')}
                 </button>
                 <button
                     className={searchFilter.type === 'expense' ? 'active expense' : ''}
                     onClick={() => setSearchFilter({ type: 'expense' })}
                 >
-                    Expense
+                    {t(language, 'expense')}
                 </button>
             </div>
         </div>

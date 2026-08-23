@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS account_transfers (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- 10. Ledger Table (Receivables & Payables)
+-- 10. Ledger Table (Receivables & Payables with Accounts & Partial Payments)
 CREATE TABLE IF NOT EXISTS ledger (
     id BIGINT PRIMARY KEY,
     type TEXT NOT NULL,
@@ -124,6 +124,9 @@ CREATE TABLE IF NOT EXISTS ledger (
     is_paid BOOLEAN DEFAULT false,
     paid_at BIGINT,
     created_at BIGINT NOT NULL,
+    account_id BIGINT,
+    initial_transaction_id BIGINT,
+    payments JSONB,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 

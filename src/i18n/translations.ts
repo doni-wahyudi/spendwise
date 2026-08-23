@@ -43,9 +43,15 @@ interface Translations {
     save: string; add: string; edit: string; delete: string; confirm: string;
     // ── Accounts ──
     accountName: string; initialBalance: string; setNewBalance: string;
+    adjustBalance: string; editAccount: string;
     transferAmount: string; transferNote: string; fromAccount: string;
     toAccount: string; transferHistory: string; setAsDefault: string;
-    bank: string; cash: string; other: string;
+    bank: string; cash: string; ewallet: string; investment: string; other: string;
+    accountActivity: string; accountTransactions: string; totalSpent: string;
+    totalReceived: string; netTransfers: string; noAccountTransactions: string;
+    viewTransactions: string; allAccounts: string; spendingByCategory: string;
+    selectAccountToView: string; transfersCount: string; inflow: string;
+    outflow: string; accountDetails: string;
     // ── Search / Filter ──
     searchPlaceholder: string; clearFilters: string;
     allCategories: string; allTags: string; allTypes: string;
@@ -69,6 +75,15 @@ interface Translations {
     // ── Ledger ──
     paid: string; unpaid: string; personOrCompany: string;
     markAsPaid: string; markAsUnpaid: string; ledgerNote: string;
+    toReceive: string; toPay: string; receivable: string; payable: string;
+    receivables: string; payables: string; addReceivable: string; addPayable: string;
+    recordPayment: string; paymentHistory: string; remaining: string;
+    paidSoFar: string; partialPaid: string; recordInTransactions: string;
+    disburseFromAccount: string; receiveIntoAccount: string; payFull: string;
+    noPaymentsYet: string; paymentAdded: string; paymentDeleted: string;
+    deletePaymentConfirm: string; activeLedger: string; allLedger: string;
+    settledLedger: string; sourceAccount: string; paymentAmount: string;
+    paymentAmountError: string;
     // ── Reports (Settings > Data) ──
     totalIncome: string; totalExpense: string; netBalance: string; topExpenses: string;
     // ── Reports View ──
@@ -141,10 +156,21 @@ const translations: Record<Language, Translations> = {
         edit: 'Edit', delete: 'Hapus', confirm: 'Konfirmasi',
         accountName: 'Nama Akun', initialBalance: 'Saldo awal (opsional)',
         setNewBalance: 'Atur saldo baru (kosongkan untuk tetap)',
+        adjustBalance: 'Sesuaikan Saldo Akun', editAccount: 'Edit Akun',
         transferAmount: 'Jumlah transfer', transferNote: 'mis. Tabungan bulanan',
         fromAccount: 'Dari Akun', toAccount: 'Ke Akun',
         transferHistory: 'Riwayat Transfer', setAsDefault: 'Jadikan utama',
-        bank: 'Bank', cash: 'Tunai', other: 'Lainnya',
+        bank: 'Bank', cash: 'Tunai', ewallet: 'E-Wallet', investment: 'Investasi', other: 'Lainnya',
+        accountActivity: 'Aktivitas & Pengeluaran Akun',
+        accountTransactions: 'Daftar Transaksi Akun',
+        totalSpent: 'Total Pengeluaran', totalReceived: 'Total Pemasukan',
+        netTransfers: 'Transfer Bersih',
+        noAccountTransactions: 'Belum ada transaksi pada akun ini.',
+        viewTransactions: 'Lihat Transaksi', allAccounts: 'Semua Akun',
+        spendingByCategory: 'Pengeluaran per Kategori',
+        selectAccountToView: 'Pilih akun di atas untuk melihat rincian pengeluaran',
+        transfersCount: 'Transfer', inflow: 'Masuk', outflow: 'Keluar',
+        accountDetails: 'Detail Akun',
         searchPlaceholder: 'Cari catatan, kategori, tag, jumlah...',
         clearFilters: 'Hapus filter', allCategories: 'Semua Kategori',
         allTags: 'Semua Tag', allTypes: 'Semua Tipe',
@@ -166,6 +192,21 @@ const translations: Record<Language, Translations> = {
         personOrCompany: 'Nama orang atau perusahaan',
         markAsPaid: 'Tandai lunas', markAsUnpaid: 'Tandai belum lunas',
         ledgerNote: 'mis. Makan malam minggu lalu',
+        toReceive: 'Piutang', toPay: 'Hutang', receivable: 'Piutang', payable: 'Hutang',
+        receivables: 'Daftar Piutang', payables: 'Daftar Hutang',
+        addReceivable: '+ Tambah Piutang', addPayable: '+ Tambah Hutang',
+        recordPayment: 'Catat Pembayaran', paymentHistory: 'Riwayat Pembayaran',
+        remaining: 'Sisa', paidSoFar: 'Sudah Dibayar', partialPaid: 'Sebagian',
+        recordInTransactions: 'Catat ke transaksi & perbarui saldo akun',
+        disburseFromAccount: 'Potong dari saldo akun (pengeluaran pinjaman)',
+        receiveIntoAccount: 'Tambah ke saldo akun (pemasukan pinjaman)',
+        payFull: 'Lunasi Sisa', noPaymentsYet: 'Belum ada pembayaran dicatat.',
+        paymentAdded: 'Pembayaran berhasil dicatat!', paymentDeleted: 'Pembayaran dihapus!',
+        deletePaymentConfirm: 'Yakin ingin menghapus catatan pembayaran ini?',
+        activeLedger: 'Belum Lunas & Sebagian', allLedger: 'Semua',
+        settledLedger: 'Sudah Lunas', sourceAccount: 'Pilih Akun Terkait',
+        paymentAmount: 'Jumlah Pembayaran',
+        paymentAmountError: 'Jumlah pembayaran harus lebih dari 0 dan tidak melebihi sisa hutang.',
         totalIncome: 'Total Pemasukan', totalExpense: 'Total Pengeluaran',
         netBalance: 'Saldo Bersih', topExpenses: 'Pengeluaran Terbesar',
         financialReport: 'Laporan Keuangan', monthlyReport: 'Laporan Bulanan',
@@ -244,10 +285,21 @@ const translations: Record<Language, Translations> = {
         edit: 'Edit', delete: 'Delete', confirm: 'Confirm',
         accountName: 'Account name', initialBalance: 'Initial balance (optional)',
         setNewBalance: 'Set new balance (leave empty to keep)',
+        adjustBalance: 'Adjust Account Balance', editAccount: 'Edit Account',
         transferAmount: 'Transfer amount', transferNote: 'e.g., Monthly savings',
         fromAccount: 'From Account', toAccount: 'To Account',
         transferHistory: 'Transfer History', setAsDefault: 'Set as default',
-        bank: 'Bank', cash: 'Cash', other: 'Other',
+        bank: 'Bank', cash: 'Cash', ewallet: 'E-Wallet', investment: 'Investment', other: 'Other',
+        accountActivity: 'Account Activity & Spending',
+        accountTransactions: 'Account Transactions',
+        totalSpent: 'Total Spent', totalReceived: 'Total Received',
+        netTransfers: 'Net Transfers',
+        noAccountTransactions: 'No transactions recorded on this account yet.',
+        viewTransactions: 'View Transactions', allAccounts: 'All Accounts',
+        spendingByCategory: 'Spending by Category',
+        selectAccountToView: 'Select an account above to view spending details',
+        transfersCount: 'Transfers', inflow: 'Inflow', outflow: 'Outflow',
+        accountDetails: 'Account Details',
         searchPlaceholder: 'Search note, category, tag, amount...',
         clearFilters: 'Clear filters', allCategories: 'All Categories',
         allTags: 'All Tags', allTypes: 'All Types',
@@ -269,6 +321,21 @@ const translations: Record<Language, Translations> = {
         personOrCompany: 'Person or company name',
         markAsPaid: 'Mark as paid', markAsUnpaid: 'Mark as unpaid',
         ledgerNote: 'e.g., For dinner last week',
+        toReceive: 'To Receive', toPay: 'To Pay', receivable: 'Receivable', payable: 'Payable',
+        receivables: 'Receivables', payables: 'Payables',
+        addReceivable: '+ Add Receivable', addPayable: '+ Add Payable',
+        recordPayment: 'Record Payment', paymentHistory: 'Payment History',
+        remaining: 'Remaining', paidSoFar: 'Paid So Far', partialPaid: 'Partial',
+        recordInTransactions: 'Record in transactions & update account balance',
+        disburseFromAccount: 'Deduct from account balance (loan disbursement)',
+        receiveIntoAccount: 'Add to account balance (loan receipt)',
+        payFull: 'Pay Full Remaining', noPaymentsYet: 'No payments recorded yet.',
+        paymentAdded: 'Payment recorded successfully!', paymentDeleted: 'Payment deleted!',
+        deletePaymentConfirm: 'Are you sure you want to delete this payment?',
+        activeLedger: 'Active & Partial', allLedger: 'All',
+        settledLedger: 'Fully Settled', sourceAccount: 'Select Linked Account',
+        paymentAmount: 'Payment Amount',
+        paymentAmountError: 'Payment amount must be greater than 0 and cannot exceed the remaining balance.',
         totalIncome: 'Total Income', totalExpense: 'Total Expense',
         netBalance: 'Net Balance', topExpenses: 'Top Expenses',
         financialReport: 'Financial Report', monthlyReport: 'Monthly Report',

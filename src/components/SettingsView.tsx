@@ -280,8 +280,8 @@ export default function SettingsView() {
                             <button
                                 className="danger-btn"
                                 onClick={async () => {
-                                    if (confirm('Are you sure you want to delete all data?')) {
-                                        if (confirm('Are you ABSOLUTELY sure? This will delete ALL transactions, recurring transactions, and custom categories!')) {
+                                    if (confirm(language === 'id' ? 'Apakah Anda yakin ingin menghapus semua data?' : 'Are you sure you want to delete all data?')) {
+                                        if (confirm(language === 'id' ? 'Apakah Anda BENAR-BENAR yakin? Semua data akan dihapus permanen!' : 'Are you ABSOLUTELY sure? This will delete all data permanently!')) {
                                             try {
                                                 await db.transactions.clear();
                                                 await db.recurringTransactions.clear();
@@ -291,16 +291,16 @@ export default function SettingsView() {
                                                 await db.transactionTemplates.clear();
                                                 await db.categories.clear();
                                                 await seedDatabase();
-                                                alert('All data has been cleared. Default categories restored.');
+                                                alert(language === 'id' ? 'Semua data telah dibersihkan. Kategori bawaan dipulihkan.' : 'All data has been cleared. Default categories restored.');
                                             } catch {
-                                                alert('Failed to clear data');
+                                                alert(language === 'id' ? 'Gagal membersihkan data' : 'Failed to clear data');
                                             }
                                         }
                                     }
                                 }}
                             >
                                 <Trash2 size={16} />
-                                Clear All Data
+                                {t(language, 'clearAllData')}
                             </button>
                         </section>
                     </div>
@@ -312,7 +312,7 @@ export default function SettingsView() {
                         <TagManager />
                         <section className="settings-section">
                             <div className="section-header">
-                                <h3>Categories</h3>
+                                <h3>{t(language, 'categories')}</h3>
                                 <button className="add-category-btn" onClick={() => setShowNewCategory(!showNewCategory)}>
                                     <Plus size={16} />
                                     {t(language, 'add')} {t(language, 'categories')}
@@ -339,7 +339,7 @@ export default function SettingsView() {
                                         onChange={(e) => setNewColor(e.target.value)}
                                         className="color-input"
                                     />
-                                    <button type="submit" className="submit-btn small">Add</button>
+                                    <button type="submit" className="submit-btn small">{t(language, 'add')}</button>
                                 </form>
                             )}
 

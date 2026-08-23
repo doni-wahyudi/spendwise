@@ -199,7 +199,17 @@ db.version(9).stores({
   accountTransfers: '++id, fromAccountId, toAccountId, date'
 });
 
-// Version 10: Added Ledger for loans/debts tracking
+// Version 10 & 12: Added Ledger for loans/debts tracking with partial payments and account integration
+export interface LedgerPayment {
+  id: string; // unique ID
+  amount: number;
+  date: string;
+  accountId?: number;
+  transactionId?: number; // linked ID in transactions table
+  note?: string;
+  createdAt: number;
+}
+
 export interface LedgerItem {
   id?: number;
   type: 'receivable' | 'payable';  // receivable = someone owes you, payable = you owe someone
@@ -210,6 +220,9 @@ export interface LedgerItem {
   isPaid: boolean;
   paidAt?: number;
   createdAt: number;
+  accountId?: number; // Initial account linked for disbursement/receipt
+  initialTransactionId?: number; // Transaction created upon loan issuance/borrowing
+  payments?: LedgerPayment[]; // Partial/full payments list
 }
 
 db.version(10).stores({
@@ -237,6 +250,21 @@ db.version(11).stores({
   tags: '++id, &name',
   accountTransfers: '++id, fromAccountId, toAccountId, date',
   ledger: '++id, type, personName, isPaid, dueDate, createdAt',
+  settings: '&id'
+});
+
+// Version 12: Enhanced Ledger with accounts, records, and partial payments
+db.version(12).stores({
+  transactions: '++id, type, categoryId, accountId, date',
+  categories: '++id, name, type',
+  recurringTransactions: '++id, type, categoryId, frequency, isActive',
+  accounts: '++id, name, type, isDefault',
+  savingsGoals: '++id, name',
+  billReminders: '++id, name, dueDay, isActive',
+  transactionTemplates: '++id, name, usageCount',
+  tags: '++id, &name',
+  accountTransfers: '++id, fromAccountId, toAccountId, date',
+  ledger: '++id, type, personName, isPaid, dueDate, createdAt, accountId',
   settings: '&id'
 });
 

@@ -1,39 +1,56 @@
-# Plan v7 — Category Click-Filtering & Global Transaction Edit Modal
+# Plan v7 — Historical Note Autocomplete & Cloud Sync Status Notification System
 
-## Goal
-1. Allow users to filter the transaction list in the Accounts view by clicking on any category row in the **Pengeluaran per Kategori** (Spending by Category) card.
-2. Replace the unstyled inline transaction edit modal with the global, full-featured `TransactionForm` modal so users can edit all fields, including reassigning the **Account** if they selected the wrong account.
+## Goals
+1. Provide historical note autocomplete suggestions with fuzzy matching, usage count, category/amount hints, and one-tap auto-prefill to prevent duplicate/splintered item names in reports.
+2. Provide real-time sync notifications and status indicator showing whether data is synced, syncing, offline, or how many records are pending synchronization.
 
 ## Completed Changes
 
-### 1. Interactive Category Filter in Accounts View
-- **[MODIFY] `src/components/AccountsView.tsx`**:
-  - Added `selectedCategoryId` state to track active category filter.
-  - Category rows in the breakdown card are now interactive buttons with hover highlight, active outline/badge, and accessibility attributes.
-  - Clicking a category row filters the activity feed to only show transactions of that category.
-  - Clicking the same category again or clicking the **Reset Filter** button clears the filter.
-  - Added an active filter notice banner displaying the selected category name with a quick clear button.
-  - Switching accounts automatically clears the category filter.
+### 1. Historical Note Autocomplete (`NoteAutocomplete.tsx` & `TransactionForm.tsx`)
+- **[NEW] `src/components/NoteAutocomplete.tsx`**:
+  - Custom auto-complete component featuring fuzzy scoring (exact, prefix, substring, character sequence matching).
+  - Highlights matching characters with custom mark styling.
+  - Displays usage count badges (e.g. `5×`), trending icon (≥3 usages), last amount used, and category color pill.
+  - On focus with an empty input, presents the top 8 most frequent items as quick chips.
+  - Full keyboard accessibility (`ArrowUp`, `ArrowDown`, `Enter`, `Escape`).
+  - Auto-selects the last used category when a suggestion is clicked if not already chosen.
+- **[MODIFY] `src/components/TransactionForm.tsx`**:
+  - Integrated `NoteAutocomplete` into the transaction form.
+  - Mines history directly from `db.transactions` in memory using `useMemo` with zero database lag.
 
-### 2. Transaction Edit Modal Integration with Account Reassignment
-- **[MODIFY] `src/components/AccountsView.tsx`**:
-  - Replaced the previous ad-hoc unstyled inline modal with the application's global `setEditingTransaction(tx)` action from `useStore`.
-  - When clicking edit on any transaction in the account activity feed, the global `TransactionForm` modal appears with full styling, category selector, type selector, and **Account Selector**.
-  - Users can change the account if they originally assigned the transaction to the wrong account; balances and activity feeds for both accounts update reactively.
-  - Removed duplicate inline edit state (`editingTx`, `editTxAmount`, etc.) and cleaned up DOM markup.
-
-### 3. Internationalization (i18n) & Styles
-- **[MODIFY] `src/i18n/translations.ts`**:
-  - Added missing keys: `editAccount`, `ewallet`, `investment`, `adjustBalance`.
-- **[MODIFY] `src/index.css`**:
-  - Added styling for `.category-bar-item:hover`, `.category-bar-item.active-filter`, `.active-cat-badge`, `.category-filter-notice`, `.clear-cat-filter-btn`, and `.clear-cat-filter-mini-btn`.
-  - Added Light Theme overrides for all new category filter elements.
+### 2. Live Cloud Sync Tracking & Unsynced Records Notification (`syncQueue` & `SyncStatusBadge`)
+- **[MODIFY] `src/db/db.ts`**:
+  - Added `SyncQueueItem` interface and `syncQueue` table to Dexie database schema (Version 13).
+- **[MODIFY] `src/db/sync.ts`**:
+  - Upgraded synchronization engine with an offline outbox queue in Dexie.
+  - Every local change (`creating`, `updating`, `deleting`) adds an item to `db.syncQueue` and attempts debounced processing.
+  - Automatically retries and flushes the queue when internet connection restores (`window.addEventListener('online', ...)`).
+  - Implemented `fullSync()`, `processSyncQueue()`, and `pullFromSupabase()`.
+- **[NEW] `src/hooks/useSyncStatus.ts`**:
+  - Live reactive hook tracking `pendingCount` (via `useLiveQuery(() => db.syncQueue.count())`), `isOnline`, `isSyncing`, `lastSyncTime`, `user`, and `syncNow()`.
+- **[NEW] `src/components/SyncStatusBadge.tsx`**:
+  - Header badge displaying live sync state:
+    - **Synced**: `☁️✓ Tersinkron` (Emerald pill)
+    - **Syncing**: `🔄 Menyinkronkan...` (Spinning indigo pill)
+    - **Unsynced Pending**: `☁️⚠️ X belum sync` with pulsing amber warning pill and exact record count
+    - **Offline**: `📡 Offline` (Gray/red pill)
+    - **Local Mode**: `☁️ Lokal` (Neutral gray pill)
+  - Interactive popover modal displaying connection state, user account, number of unsynced records, last sync timestamp, and **Sync Now (Sinkronkan Sekarang)** trigger button.
+- **[MODIFY] `src/App.tsx`**:
+  - Positioned `SyncStatusBadge` in the main app header alongside title and settings.
+- **[MODIFY] `src/components/CloudBackup.tsx`**:
+  - Displays live pending sync count badge in the backup info section.
+  - Clears `syncQueue` when full manual backup/restore succeeds.
+- **[MODIFY] `src/i18n/translations.ts` & `src/index.css`**:
+  - Added bilingual translations for sync states (`id` / `en`).
+  - Added styling and light/dark theme overrides for badges, modals, and pending count pills.
 
 ## Verification
-- Ran `npx tsc --noEmit` and `npm run build`: built production bundle in 3.65s with 0 errors.
+- `npx tsc --noEmit`: 0 errors.
+- `npm run build`: built in 3.62s with 0 errors.
 
 ## Completion Log
-- **What was done**: Enabled category click-filtering in AccountsView, replaced inline edit modal with the global TransactionForm modal with account reassignment support, and added translation keys and styling.
-- **Why it was done**: To satisfy user request for category filtering on click and unified transaction editing with account correction.
-- **What changed**: `src/components/AccountsView.tsx`, `src/i18n/translations.ts`, `src/index.css`, `planv7.md`, `TECHNICAL_DETAILS.md`, `walkthrough.md`.
+- **What was done**: Implemented historical note autocomplete with fuzzy search and category prefill, created persistent Dexie-backed syncQueue outbox, and added real-time sync notification badge and details popover with exact pending record counters.
+- **Why it was done**: Fulfill user requests for consistent item naming and transparent visibility into sync status and unsynced record counts.
+- **What changed**: `src/db/db.ts`, `src/db/sync.ts`, `src/hooks/useSyncStatus.ts`, `src/components/SyncStatusBadge.tsx`, `src/components/NoteAutocomplete.tsx`, `src/components/TransactionForm.tsx`, `src/components/CloudBackup.tsx`, `src/App.tsx`, `src/i18n/translations.ts`, `src/index.css`, `planv7.md`, `TECHNICAL_DETAILS.md`, `walkthrough.md`.
 - **Unresolved items**: None.

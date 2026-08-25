@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { useStore } from '../store/useStore';
@@ -7,8 +7,10 @@ import { formatNumber, parseFormattedNumber } from '../utils/currency';
 import { formatLocalDate } from '../utils/dateUtils';
 import { scanReceipt } from '../utils/receiptScanner';
 import TagInput from './TagInput';
+import NoteAutocomplete from './NoteAutocomplete';
 import { Camera, Loader, Upload } from 'lucide-react';
 import { t } from '../i18n/translations';
+import type { NoteHistoryItem } from './NoteAutocomplete';
 
 interface TransactionFormProps {
     onSuccess?: () => void;
@@ -19,6 +21,8 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
     const { addToast } = useToast();
     const categories = useLiveQuery(() => db.categories.toArray());
     const accounts = useLiveQuery(() => db.accounts.toArray());
+    // Load all transactions for note autocomplete history mining
+    const allTransactions = useLiveQuery(() => db.transactions.orderBy('date').reverse().toArray(), []);
     const fileInputRef = useRef<HTMLInputElement>(null); // Camera capture
     const galleryInputRef = useRef<HTMLInputElement>(null); // Gallery upload
 
@@ -31,6 +35,42 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
     const [tags, setTags] = useState<string[]>([]);
     const [error, setError] = useState('');
     const [isScanning, setIsScanning] = useState(false);
+
+    // Build note history from past transactions: group by normalized note, count occurrences
+    const noteHistory = useMemo<NoteHistoryItem[]>(() => {
+        if (!allTransactions || !categories) return [];
+        const map = new Map<string, NoteHistoryItem>();
+
+        for (const tx of allTransactions) {
+            const raw = tx.note?.trim();
+            if (!raw) continue;
+
+            // Normalize note: lowercase key for grouping
+            const key = raw.toLowerCase();
+            const cat = categories.find(c => c.id === tx.categoryId);
+
+            if (map.has(key)) {
+                const existing = map.get(key)!;
+                existing.count += 1;
+                // Keep the canonical (most recent) casing
+            } else {
+                map.set(key, {
+                    note: raw,
+                    count: 1,
+                    lastUsed: tx.date,
+                    lastAmount: tx.amount,
+                    categoryId: tx.categoryId,
+                    categoryName: cat?.name,
+                    categoryColor: cat?.color,
+                });
+            }
+        }
+
+        // Sort by usage count desc, then by lastUsed desc
+        return Array.from(map.values()).sort(
+            (a, b) => b.count - a.count || b.lastUsed.localeCompare(a.lastUsed)
+        );
+    }, [allTransactions, categories]);
 
     // Set default account for new transactions only
     useEffect(() => {
@@ -287,11 +327,21 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                 />
-                <input
-                    type="text"
-                    placeholder={t(language, 'noteOptional')}
+                <NoteAutocomplete
                     value={note}
-                    onChange={(e) => setNote(e.target.value)}
+                    onChange={setNote}
+                    history={noteHistory}
+                    placeholder={t(language, 'noteOptional')}
+                    language={language}
+                    onSelectSuggestion={(item) => {
+                        // Auto-prefill category if not yet chosen and the suggested item has a valid category for current type
+                        if (!categoryId && item.categoryId) {
+                            const matchedCat = categories?.find(
+                                c => c.id === item.categoryId && (c.type === type || c.type === 'both')
+                            );
+                            if (matchedCat) setCategoryId(matchedCat.id.toString());
+                        }
+                    }}
                 />
             </div>
 

@@ -37,6 +37,11 @@ interface Translations {
     clearAllData: string; clearDataDesc: string; dangerZone: string;
     clearConfirm: string; deleteConfirm: string;
     importSuccess: string; exportSuccess: string; dataCleared: string; noData: string;
+    // ── Sync & Cloud ──
+    syncStatus: string; allSynced: string; syncing: string; recordsUnsynced: string;
+    syncNow: string; lastSynced: string; notSignedIn: string; offlineMode: string;
+    syncSuccess: string; syncError: string; cloudConnected: string;
+    savedLocallyOnly: string; savedAndSynced: string; syncDetails: string; openCloudSettings: string;
     // ── Categories ──
     categoryName: string; editCategory: string; type: string; color: string;
     expenseCategories: string; incomeCategories: string; defaultBadge: string;
@@ -149,6 +154,14 @@ const translations: Record<Language, Translations> = {
         deleteConfirm: 'Yakin ingin menghapus ini?',
         importSuccess: 'Berhasil mengimpor data', exportSuccess: 'Berhasil mengekspor data',
         dataCleared: 'Semua data telah dihapus', noData: 'Tidak ada data.',
+        syncStatus: 'Status Sinkronisasi', allSynced: 'Semua Data Tersinkron',
+        syncing: 'Menyinkronkan...', recordsUnsynced: 'catatan belum tersinkron',
+        syncNow: 'Sinkronkan Sekarang', lastSynced: 'Terakhir disinkronkan',
+        notSignedIn: 'Belum masuk akun Cloud (Mode Lokal)', offlineMode: 'Mode Offline (Tersimpan Lokal)',
+        syncSuccess: 'Sinkronisasi berhasil!', syncError: 'Gagal menyinkronkan data',
+        cloudConnected: 'Terhubung ke Cloud', savedLocallyOnly: 'Disimpan di perangkat (menunggu sinkron)',
+        savedAndSynced: 'Disimpan & disinkronkan ke Cloud', syncDetails: 'Rincian Sinkronisasi',
+        openCloudSettings: 'Buka Pengaturan Cloud',
         categoryName: 'Nama Kategori', editCategory: 'Edit Kategori',
         type: 'Tipe', color: 'Warna',
         expenseCategories: 'Kategori Pengeluaran', incomeCategories: 'Kategori Pemasukan',
@@ -278,6 +291,14 @@ const translations: Record<Language, Translations> = {
         deleteConfirm: 'Are you sure you want to delete this?',
         importSuccess: 'Data imported successfully', exportSuccess: 'Data exported successfully',
         dataCleared: 'All data has been cleared', noData: 'No data available.',
+        syncStatus: 'Sync Status', allSynced: 'All Records Synced',
+        syncing: 'Syncing...', recordsUnsynced: 'records unsynced',
+        syncNow: 'Sync Now', lastSynced: 'Last synced',
+        notSignedIn: 'Not signed in to Cloud (Local Mode)', offlineMode: 'Offline Mode (Saved Locally)',
+        syncSuccess: 'Sync completed successfully!', syncError: 'Failed to sync data',
+        cloudConnected: 'Connected to Cloud', savedLocallyOnly: 'Saved locally (pending sync)',
+        savedAndSynced: 'Saved & synced to Cloud', syncDetails: 'Sync Details',
+        openCloudSettings: 'Open Cloud Settings',
         categoryName: 'Category name', editCategory: 'Edit Category',
         type: 'Type', color: 'Color',
         expenseCategories: 'Expense Categories', incomeCategories: 'Income Categories',

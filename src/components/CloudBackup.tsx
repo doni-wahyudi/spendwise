@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { supabase, TABLES } from '../db/supabase';
 import { useToast } from '../store/useToast';
 import { useAuth } from '../store/AuthContext';
 import AuthForm from './AuthForm';
-import { Cloud, Upload, Download, Check, AlertCircle, Loader } from 'lucide-react';
+import { Cloud, Upload, Download, Check, AlertCircle, Loader, CloudOff } from 'lucide-react';
 
 type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -37,6 +38,7 @@ export default function CloudBackup() {
     const [lastBackup, setLastBackup] = useState<string | null>(
         localStorage.getItem('spendwise-last-backup')
     );
+    const pendingCount = useLiveQuery(() => db.syncQueue.count(), [], 0);
 
     const handleBackup = async () => {
         if (!supabase) {
@@ -118,8 +120,10 @@ export default function CloudBackup() {
                 setBackupStatus('error');
                 addToast('Backup completed with errors', 'error');
             } else {
+                await db.syncQueue.clear();
                 const timestamp = new Date().toISOString();
                 localStorage.setItem('spendwise-last-backup', timestamp);
+                localStorage.setItem('spendwise-last-sync-time', timestamp);
                 setLastBackup(timestamp);
                 setBackupStatus('success');
                 addToast('Backup successful!', 'success');
@@ -252,10 +256,23 @@ export default function CloudBackup() {
                     <AuthForm />
 
                     <div className="backup-info">
-                        {lastBackup ? (
-                            <span>Last backup: {formatDate(lastBackup)}</span>
+                        <div className="backup-info-row">
+                            {lastBackup ? (
+                                <span>Last backup: {formatDate(lastBackup)}</span>
+                            ) : (
+                                <span>No backup yet</span>
+                            )}
+                        </div>
+                        {pendingCount > 0 ? (
+                            <div className="backup-pending-pill warning">
+                                <CloudOff size={13} />
+                                <span>{pendingCount} records waiting to sync</span>
+                            </div>
                         ) : (
-                            <span>No backup yet</span>
+                            <div className="backup-pending-pill success">
+                                <Check size={13} />
+                                <span>All local records synced</span>
+                            </div>
                         )}
                     </div>
 

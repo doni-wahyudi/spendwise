@@ -89,6 +89,16 @@ export interface SettingItem {
   updatedAt: number;
 }
 
+// Define Interface for Sync Queue
+export interface SyncQueueItem {
+  id?: number;
+  tableName: string;
+  action: 'upsert' | 'delete';
+  entityId: number | string;
+  payload?: any;
+  createdAt: number;
+}
+
 // Database Declaration
 const db = new Dexie('SpendWiseDB') as Dexie & {
   transactions: EntityTable<Transaction, 'id'>,
@@ -101,7 +111,8 @@ const db = new Dexie('SpendWiseDB') as Dexie & {
   tags: EntityTable<TagDefinition, 'id'>,
   accountTransfers: EntityTable<AccountTransfer, 'id'>,
   ledger: EntityTable<LedgerItem, 'id'>,
-  settings: EntityTable<SettingItem, 'id'>
+  settings: EntityTable<SettingItem, 'id'>,
+  syncQueue: EntityTable<SyncQueueItem, 'id'>
 };
 
 // Schema versions
@@ -266,6 +277,22 @@ db.version(12).stores({
   accountTransfers: '++id, fromAccountId, toAccountId, date',
   ledger: '++id, type, personName, isPaid, dueDate, createdAt, accountId',
   settings: '&id'
+});
+
+// Version 13: Added syncQueue for tracking offline unsynced records
+db.version(13).stores({
+  transactions: '++id, type, categoryId, accountId, date',
+  categories: '++id, name, type',
+  recurringTransactions: '++id, type, categoryId, frequency, isActive',
+  accounts: '++id, name, type, isDefault',
+  savingsGoals: '++id, name',
+  billReminders: '++id, name, dueDay, isActive',
+  transactionTemplates: '++id, name, usageCount',
+  tags: '++id, &name',
+  accountTransfers: '++id, fromAccountId, toAccountId, date',
+  ledger: '++id, type, personName, isPaid, dueDate, createdAt, accountId',
+  settings: '&id',
+  syncQueue: '++id, tableName, action, entityId, createdAt'
 });
 
 export { db };

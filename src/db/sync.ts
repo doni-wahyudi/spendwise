@@ -2,6 +2,8 @@ import { db } from './db';
 import { supabase } from './supabase';
 
 let isSyncingFromServer = false;
+let isProcessingQueue = false;
+let syncDebounceTimer: any = null;
 
 export const setSyncingFromServer = (val: boolean) => {
     isSyncingFromServer = val;
@@ -43,42 +45,145 @@ const transformKeys = (obj: Record<string, any>, transformer: (key: string) => s
 const transformArray = (arr: any[], transformer: (key: string) => string): Record<string, any>[] =>
     arr.map(item => transformKeys(item, transformer));
 
-// Sync local Dexie changes to Supabase
-const syncLocalToRemote = async (tableName: string, eventType: 'upsert' | 'delete', record: any) => {
-    if (isSyncingFromServer || !supabase) return;
+// Enqueue a local change into Dexie syncQueue
+export const addToSyncQueue = async (
+    tableName: string,
+    action: 'upsert' | 'delete',
+    entityId: number | string,
+    payload?: any
+) => {
+    if (isSyncingFromServer) return;
 
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session?.user;
-        if (!user) return;
+        // Check if there is already a pending item for this table and entity
+        const existing = await db.syncQueue
+            .where('tableName')
+            .equals(tableName)
+            .filter(item => String(item.entityId) === String(entityId))
+            .first();
 
-        const supabaseTableName = TABLE_MAP[tableName];
-        if (!supabaseTableName) return;
-
-        if (eventType === 'upsert') {
-            // Include user_id and transform to snake_case
-            const recordWithUser = { ...record, user_id: user.id };
-            const transformed = transformKeys(recordWithUser, toSnakeCase);
-            
-            const { error } = await supabase.from(supabaseTableName).upsert(transformed);
-            if (error) {
-                console.error(`Error syncing upsert to Supabase for ${supabaseTableName}:`, error);
-            }
-        } else if (eventType === 'delete') {
-            const { error } = await supabase.from(supabaseTableName)
-                .delete()
-                .eq('id', record.id)
-                .eq('user_id', user.id);
-            if (error) {
-                console.error(`Error syncing delete to Supabase for ${supabaseTableName}:`, error);
-            }
+        if (existing && existing.id) {
+            await db.syncQueue.update(existing.id, {
+                action,
+                payload: action === 'upsert' ? payload : undefined,
+                createdAt: Date.now()
+            });
+        } else {
+            await db.syncQueue.add({
+                tableName,
+                action,
+                entityId,
+                payload: action === 'upsert' ? payload : undefined,
+                createdAt: Date.now()
+            });
         }
+
+        // Trigger debounced queue processing
+        triggerSyncDebounced();
     } catch (e) {
-        console.error(`Unexpected sync error on local-to-remote update for ${tableName}:`, e);
+        console.error('Error adding to syncQueue:', e);
     }
 };
 
-// Register Dexie hooks for local changes
+// Process pending syncQueue items to Supabase
+export const processSyncQueue = async (): Promise<{ processed: number; remaining: number }> => {
+    if (isProcessingQueue || isSyncingFromServer || !supabase || !navigator.onLine) {
+        const count = await db.syncQueue.count().catch(() => 0);
+        return { processed: 0, remaining: count };
+    }
+
+    try {
+        isProcessingQueue = true;
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        if (!user) {
+            const count = await db.syncQueue.count().catch(() => 0);
+            return { processed: 0, remaining: count };
+        }
+
+        const queueItems = await db.syncQueue.toArray();
+        if (queueItems.length === 0) {
+            return { processed: 0, remaining: 0 };
+        }
+
+        let processedCount = 0;
+
+        for (const item of queueItems) {
+            const supabaseTableName = TABLE_MAP[item.tableName];
+            if (!supabaseTableName) {
+                // Remove invalid table queue item
+                if (item.id) await db.syncQueue.delete(item.id);
+                continue;
+            }
+
+            try {
+                if (item.action === 'upsert') {
+                    // Fetch latest data if payload missing or outdated
+                    let record = item.payload;
+                    if (!record) {
+                        const table = (db as any)[item.tableName];
+                        if (table) {
+                            record = await table.get(item.entityId);
+                        }
+                    }
+
+                    if (record) {
+                        const recordWithUser = { ...record, user_id: user.id };
+                        const transformed = transformKeys(recordWithUser, toSnakeCase);
+
+                        const { error } = await supabase.from(supabaseTableName).upsert(transformed);
+                        if (error) {
+                            console.error(`Error syncing upsert for ${supabaseTableName}:`, error);
+                            continue; // Keep in queue to retry later
+                        }
+                    }
+                } else if (item.action === 'delete') {
+                    const { error } = await supabase
+                        .from(supabaseTableName)
+                        .delete()
+                        .eq('id', item.entityId)
+                        .eq('user_id', user.id);
+
+                    if (error) {
+                        console.error(`Error syncing delete for ${supabaseTableName}:`, error);
+                        continue; // Keep in queue to retry later
+                    }
+                }
+
+                // Successfully synced item: remove from syncQueue
+                if (item.id) {
+                    await db.syncQueue.delete(item.id);
+                    processedCount++;
+                }
+            } catch (err) {
+                console.error(`Error processing sync item ${item.tableName} #${item.entityId}:`, err);
+            }
+        }
+
+        const remainingCount = await db.syncQueue.count().catch(() => 0);
+        if (remainingCount === 0) {
+            localStorage.setItem('spendwise-last-sync-time', new Date().toISOString());
+        }
+
+        return { processed: processedCount, remaining: remainingCount };
+    } catch (e) {
+        console.error('Error during processSyncQueue:', e);
+        const count = await db.syncQueue.count().catch(() => 0);
+        return { processed: 0, remaining: count };
+    } finally {
+        isProcessingQueue = false;
+    }
+};
+
+// Debounced sync trigger (300ms)
+export const triggerSyncDebounced = () => {
+    if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(() => {
+        processSyncQueue();
+    }, 300);
+};
+
+// Register Dexie hooks for local changes across all mapped tables
 const registerDexieHooks = () => {
     Object.keys(TABLE_MAP).forEach(tableName => {
         const table = (db as any)[tableName];
@@ -87,20 +192,20 @@ const registerDexieHooks = () => {
         table.hook('creating', function (this: any, primKey: any, obj: any) {
             const cloned = { ...obj };
             this.onsuccess = function (actualKey: any) {
-                syncLocalToRemote(tableName, 'upsert', { ...cloned, id: actualKey ?? primKey });
+                addToSyncQueue(tableName, 'upsert', actualKey ?? primKey, { ...cloned, id: actualKey ?? primKey });
             };
         });
 
         table.hook('updating', function (this: any, mods: any, primKey: any, obj: any) {
             const updatedObj = { ...obj, ...mods, id: primKey };
             this.onsuccess = function () {
-                syncLocalToRemote(tableName, 'upsert', updatedObj);
+                addToSyncQueue(tableName, 'upsert', primKey, updatedObj);
             };
         });
 
         table.hook('deleting', function (this: any, primKey: any, _obj: any) {
             this.onsuccess = function () {
-                syncLocalToRemote(tableName, 'delete', { id: primKey });
+                addToSyncQueue(tableName, 'delete', primKey);
             };
         });
     });
@@ -109,9 +214,17 @@ const registerDexieHooks = () => {
 // Initialize hooks immediately
 registerDexieHooks();
 
+// Listen for network reconnect to auto-flush offline syncQueue
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+        console.log('[Sync] Network connection restored, flushing sync queue...');
+        processSyncQueue();
+    });
+}
+
 // Pull all data from Supabase and merge with local Dexie
 export const pullFromSupabase = async () => {
-    if (!supabase) return;
+    if (!supabase || !navigator.onLine) return;
     try {
         const { data: { session } } = await supabase.auth.getSession();
         const user = session?.user;
@@ -137,10 +250,33 @@ export const pullFromSupabase = async () => {
                 }
             }
         }
+
+        localStorage.setItem('spendwise-last-sync-time', new Date().toISOString());
     } catch (e) {
-        console.error('Error during initial pull from Supabase:', e);
+        console.error('Error during pull from Supabase:', e);
     } finally {
         setSyncingFromServer(false);
+    }
+};
+
+// Full synchronization (Push Pending + Pull Remote)
+export const fullSync = async (): Promise<{ success: boolean; remaining: number; error?: string }> => {
+    if (!supabase) {
+        return { success: false, remaining: 0, error: 'Supabase is not configured' };
+    }
+    if (!navigator.onLine) {
+        const count = await db.syncQueue.count().catch(() => 0);
+        return { success: false, remaining: count, error: 'Offline' };
+    }
+
+    try {
+        await processSyncQueue();
+        await pullFromSupabase();
+        const finalRemaining = await db.syncQueue.count().catch(() => 0);
+        return { success: finalRemaining === 0, remaining: finalRemaining };
+    } catch (e: any) {
+        const count = await db.syncQueue.count().catch(() => 0);
+        return { success: false, remaining: count, error: e?.message || 'Sync failed' };
     }
 };
 

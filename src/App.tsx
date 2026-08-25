@@ -23,6 +23,7 @@ import TagComparison from './components/TagComparison';
 import LedgerView from './components/LedgerView';
 import ExpensePieChart from './components/ExpensePieChart';
 import ReportsView from './components/ReportsView';
+import SyncStatusBadge from './components/SyncStatusBadge';
 import { useBudgetAlerts } from './hooks/useBudgetAlerts';
 import { processRecurringTransactions } from './db/recurring';
 import { useToast } from './store/useToast';
@@ -131,14 +132,19 @@ function App() {
             <Onboarding />
             <Toast />
             <header className="app-header">
-                <h1>SpendWise</h1>
-                <button
-                    className="header-settings-btn"
-                    onClick={() => setShowSettings(true)}
-                    title="Settings"
-                >
-                    <Settings size={20} />
-                </button>
+                <div className="header-brand">
+                    <h1>SpendWise</h1>
+                </div>
+                <div className="header-actions">
+                    <SyncStatusBadge onOpenSettings={() => setShowSettings(true)} />
+                    <button
+                        className="header-settings-btn"
+                        onClick={() => setShowSettings(true)}
+                        title="Settings"
+                    >
+                        <Settings size={20} />
+                    </button>
+                </div>
             </header>
 
             <main className="app-content">

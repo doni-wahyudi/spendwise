@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Category } from '../db/db';
 import { useStore } from '../store/useStore';
 import { useToast } from '../store/useToast';
-import { Download, Plus, Trash2, Pencil, X, Calendar, AlertTriangle, Palette, Database, Sparkles, FolderOpen } from 'lucide-react';
+import { Download, Plus, Trash2, Pencil, X, Calendar, AlertTriangle, Palette, Database, Sparkles, FolderOpen, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
 import { formatLocalDate } from '../utils/dateUtils';
 import RecurringManager from './RecurringManager';
@@ -42,12 +42,15 @@ export default function SettingsView() {
     const [newType, setNewType] = useState<'income' | 'expense'>('expense');
     const [newColor, setNewColor] = useState('#6366f1');
 
+    const [showHiddenCategories, setShowHiddenCategories] = useState(false);
+
     // Edit category state
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [editName, setEditName] = useState('');
     const [editType, setEditType] = useState<'income' | 'expense' | 'both'>('expense');
     const [editColor, setEditColor] = useState('#6366f1');
     const [editBudget, setEditBudget] = useState('');
+    const [editHidden, setEditHidden] = useState(false);
 
     // Budget inline editing state
     const [editingBudget, setEditingBudget] = useState<number | null>(null);
@@ -57,11 +60,13 @@ export default function SettingsView() {
         e.preventDefault();
         if (!newName.trim()) return;
 
+        const nextOrder = categories?.length || 0;
         await addCategory({
             name: newName.trim(),
             type: newType,
             color: newColor,
-            isDefault: false
+            isDefault: false,
+            order: nextOrder
         });
 
         setNewName('');
@@ -76,6 +81,7 @@ export default function SettingsView() {
         setEditType(cat.type);
         setEditColor(cat.color || '#6366f1');
         setEditBudget(cat.budgetLimit ? formatNumber(cat.budgetLimit.toString()) : '');
+        setEditHidden(cat.isHidden || false);
     };
 
     const handleSaveEditCategory = async (e: React.FormEvent) => {
@@ -90,11 +96,34 @@ export default function SettingsView() {
             name: editName.trim(),
             type: editType,
             color: editColor,
-            budgetLimit: budgetLimit && budgetLimit > 0 ? budgetLimit : undefined
+            budgetLimit: budgetLimit && budgetLimit > 0 ? budgetLimit : undefined,
+            isHidden: editHidden
         });
 
         setEditingCategory(null);
         addToast(t(language, 'edit') + ' ' + t(language, 'categories') + ' ✓', 'success');
+    };
+
+    const handleToggleHideCategory = async (id: number, currentHidden?: boolean) => {
+        await db.categories.update(id, { isHidden: !currentHidden });
+        addToast(!currentHidden ? t(language, 'hideCategory') : t(language, 'unhideCategory'), 'info');
+    };
+
+    const handleMoveCategory = async (id: number, catType: 'expense' | 'income', direction: 'up' | 'down') => {
+        const list = catType === 'expense' ? expenseCategories : incomeCategories;
+        const idx = list.findIndex(c => c.id === id);
+        if (idx === -1) return;
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= list.length) return;
+
+        const updatedList = [...list];
+        const temp = updatedList[idx];
+        updatedList[idx] = updatedList[targetIdx];
+        updatedList[targetIdx] = temp;
+
+        for (let i = 0; i < updatedList.length; i++) {
+            await db.categories.update(updatedList[i].id, { order: i });
+        }
     };
 
     const handleDeleteCategory = async (id: number) => {
@@ -163,6 +192,17 @@ export default function SettingsView() {
         URL.revokeObjectURL(url);
     };
 
+    const filteredCategories = useMemo(() => {
+        if (!categories) return [];
+        return [...categories]
+            .filter(c => showHiddenCategories || !c.isHidden)
+            .sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    }, [categories, showHiddenCategories]);
+
+    const expenseCategories = filteredCategories.filter(c => c.type === 'expense' || c.type === 'both');
+    const incomeCategories = filteredCategories.filter(c => c.type === 'income' || c.type === 'both');
+    const hiddenCatCount = useMemo(() => categories?.filter(c => c.isHidden).length || 0, [categories]);
+
     if (!categories) {
         return (
             <div className="settings-view">
@@ -170,9 +210,6 @@ export default function SettingsView() {
             </div>
         );
     }
-
-    const expenseCategories = categories.filter(c => c.type === 'expense' || c.type === 'both');
-    const incomeCategories = categories.filter(c => c.type === 'income' || c.type === 'both');
 
     return (
         <div className="settings-view tabbed">
@@ -312,11 +349,29 @@ export default function SettingsView() {
                         <TagManager />
                         <section className="settings-section">
                             <div className="section-header">
-                                <h3>{t(language, 'categories')}</h3>
-                                <button className="add-category-btn" onClick={() => setShowNewCategory(!showNewCategory)}>
-                                    <Plus size={16} />
-                                    {t(language, 'add')} {t(language, 'categories')}
-                                </button>
+                                <div>
+                                    <h3>{t(language, 'categories')}</h3>
+                                </div>
+                                <div className="section-header-actions">
+                                    {hiddenCatCount > 0 && (
+                                        <button
+                                            type="button"
+                                            className={`acc-filter-toggle-btn ${showHiddenCategories ? 'active' : ''}`}
+                                            onClick={() => setShowHiddenCategories(!showHiddenCategories)}
+                                        >
+                                            {showHiddenCategories ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            <span>
+                                                {showHiddenCategories
+                                                    ? t(language, 'hideCategory')
+                                                    : `${t(language, 'showHiddenCategories')} (${hiddenCatCount})`}
+                                            </span>
+                                        </button>
+                                    )}
+                                    <button className="add-category-btn" onClick={() => setShowNewCategory(!showNewCategory)}>
+                                        <Plus size={16} />
+                                        {t(language, 'add')} {t(language, 'categories')}
+                                    </button>
+                                </div>
                             </div>
 
                             {showNewCategory && (
@@ -355,7 +410,7 @@ export default function SettingsView() {
                                         </div>
                                         <form onSubmit={handleSaveEditCategory} className="edit-category-form">
                                             <div className="form-group">
-                                                <label>Category Name</label>
+                                                <label>{t(language, 'categoryName')}</label>
                                                 <input
                                                     type="text"
                                                     value={editName}
@@ -366,19 +421,19 @@ export default function SettingsView() {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <label>Type</label>
+                                                <label>{t(language, 'type')}</label>
                                                 <select
                                                     value={editType}
                                                     onChange={(e) => setEditType(e.target.value as 'income' | 'expense' | 'both')}
                                                     className="form-select"
                                                 >
-                                                    <option value="expense">Expense</option>
-                                                    <option value="income">Income</option>
+                                                    <option value="expense">{t(language, 'expense')}</option>
+                                                    <option value="income">{t(language, 'income')}</option>
                                                     <option value="both">Both (Income & Expense)</option>
                                                 </select>
                                             </div>
                                             <div className="form-group">
-                                                <label>Color</label>
+                                                <label>{t(language, 'color')}</label>
                                                 <div className="color-picker-row">
                                                     <input
                                                         type="color"
@@ -418,12 +473,22 @@ export default function SettingsView() {
                                                     </div>
                                                 </div>
                                             )}
+                                            <div className="form-group-checkboxes">
+                                                <label className="custom-checkbox-label">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={editHidden}
+                                                        onChange={e => setEditHidden(e.target.checked)}
+                                                    />
+                                                    <span>👁️ {t(language, 'hideCategory')}</span>
+                                                </label>
+                                            </div>
                                             <div className="modal-actions">
                                                 <button type="button" onClick={() => setEditingCategory(null)} className="cancel-btn">
-                                                    Cancel
+                                                    {t(language, 'cancel')}
                                                 </button>
                                                 <button type="submit" className="submit-btn">
-                                                    Save Changes
+                                                    {t(language, 'save')}
                                                 </button>
                                             </div>
                                         </form>
@@ -434,14 +499,42 @@ export default function SettingsView() {
                             <div className="category-group">
                                 <h4>{t(language, 'expenseCategories')}</h4>
                                 <ul className="category-list">
-                                    {expenseCategories.map(cat => (
-                                        <li key={cat.id} className="category-item">
+                                    {expenseCategories.map((cat, idx) => (
+                                        <li key={cat.id} className={`category-item ${cat.isHidden ? 'is-hidden-category' : ''}`}>
                                             <div className="category-info">
                                                 <span className="category-color" style={{ backgroundColor: cat.color }} />
                                                 <span className="category-name">{cat.name}</span>
                                                 {cat.isDefault && <span className="default-badge">{t(language, 'defaultBadge')}</span>}
+                                                {cat.isHidden && <span className="hidden-pill-badge">{t(language, 'hidden')}</span>}
                                             </div>
                                             <div className="category-actions">
+                                                {/* Reorder Buttons */}
+                                                <button
+                                                    onClick={() => handleMoveCategory(cat.id, 'expense', 'up')}
+                                                    disabled={idx === 0}
+                                                    className="cat-icon-btn move"
+                                                    title={t(language, 'moveUp')}
+                                                >
+                                                    <ChevronUp size={13} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleMoveCategory(cat.id, 'expense', 'down')}
+                                                    disabled={idx === expenseCategories.length - 1}
+                                                    className="cat-icon-btn move"
+                                                    title={t(language, 'moveDown')}
+                                                >
+                                                    <ChevronDown size={13} />
+                                                </button>
+
+                                                {/* Hide / Unhide Button */}
+                                                <button
+                                                    onClick={() => handleToggleHideCategory(cat.id, cat.isHidden)}
+                                                    className={`cat-icon-btn hide ${cat.isHidden ? 'is-hidden-btn' : ''}`}
+                                                    title={cat.isHidden ? t(language, 'unhideCategory') : t(language, 'hideCategory')}
+                                                >
+                                                    {cat.isHidden ? <Eye size={13} /> : <EyeOff size={13} />}
+                                                </button>
+
                                                 {editingBudget === cat.id ? (
                                                     <div className="budget-edit">
                                                         <span className="budget-prefix">Rp</span>
@@ -487,14 +580,42 @@ export default function SettingsView() {
                             <div className="category-group">
                                 <h4>{t(language, 'incomeCategories')}</h4>
                                 <ul className="category-list">
-                                    {incomeCategories.map(cat => (
-                                        <li key={cat.id} className="category-item">
+                                    {incomeCategories.map((cat, idx) => (
+                                        <li key={cat.id} className={`category-item ${cat.isHidden ? 'is-hidden-category' : ''}`}>
                                             <div className="category-info">
                                                 <span className="category-color" style={{ backgroundColor: cat.color }} />
                                                 <span className="category-name">{cat.name}</span>
                                                 {cat.isDefault && <span className="default-badge">{t(language, 'defaultBadge')}</span>}
+                                                {cat.isHidden && <span className="hidden-pill-badge">{t(language, 'hidden')}</span>}
                                             </div>
                                             <div className="category-actions">
+                                                {/* Reorder Buttons */}
+                                                <button
+                                                    onClick={() => handleMoveCategory(cat.id, 'income', 'up')}
+                                                    disabled={idx === 0}
+                                                    className="cat-icon-btn move"
+                                                    title={t(language, 'moveUp')}
+                                                >
+                                                    <ChevronUp size={13} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleMoveCategory(cat.id, 'income', 'down')}
+                                                    disabled={idx === incomeCategories.length - 1}
+                                                    className="cat-icon-btn move"
+                                                    title={t(language, 'moveDown')}
+                                                >
+                                                    <ChevronDown size={13} />
+                                                </button>
+
+                                                {/* Hide / Unhide Button */}
+                                                <button
+                                                    onClick={() => handleToggleHideCategory(cat.id, cat.isHidden)}
+                                                    className={`cat-icon-btn hide ${cat.isHidden ? 'is-hidden-btn' : ''}`}
+                                                    title={cat.isHidden ? t(language, 'unhideCategory') : t(language, 'hideCategory')}
+                                                >
+                                                    {cat.isHidden ? <Eye size={13} /> : <EyeOff size={13} />}
+                                                </button>
+
                                                 <button
                                                     onClick={() => handleStartEditCategory(cat)}
                                                     className="edit-cat-btn"

@@ -72,13 +72,29 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
         );
     }, [allTransactions, categories]);
 
+    // Filter & Sort Accounts: Favorites pinned to top, hide hidden accounts unless editing
+    const filteredAccounts = useMemo(() => {
+        if (!accounts) return [];
+        return accounts
+            .filter(a => !a.isHidden || a.id === editingTransaction?.accountId)
+            .sort((a, b) => {
+                if (a.isFavorite && !b.isFavorite) return -1;
+                if (!a.isFavorite && b.isFavorite) return 1;
+                if (a.isDefault && !b.isDefault) return -1;
+                if (!a.isDefault && b.isDefault) return 1;
+                const orderA = a.order ?? a.id;
+                const orderB = b.order ?? b.id;
+                return orderA - orderB;
+            });
+    }, [accounts, editingTransaction]);
+
     // Set default account for new transactions only
     useEffect(() => {
-        if (!editingTransaction && accounts && accounts.length > 0 && !accountId) {
-            const defaultAcc = accounts.find(a => a.isDefault) || accounts[0];
+        if (!editingTransaction && filteredAccounts && filteredAccounts.length > 0 && !accountId) {
+            const defaultAcc = filteredAccounts.find(a => a.isFavorite) || filteredAccounts.find(a => a.isDefault) || filteredAccounts[0];
             setAccountId(defaultAcc.id.toString());
         }
-    }, [accounts, accountId, editingTransaction]);
+    }, [filteredAccounts, accountId, editingTransaction]);
 
     // Populate form when editing
     useEffect(() => {
@@ -215,7 +231,12 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
     if (!categories) return null;
 
     const isEditing = !!editingTransaction;
-    const filteredCategories = categories.filter(c => c.type === type || c.type === 'both');
+    const filteredCategories = useMemo(() => {
+        if (!categories) return [];
+        return categories
+            .filter(c => (c.type === type || c.type === 'both') && (!c.isHidden || c.id === editingTransaction?.categoryId))
+            .sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    }, [categories, type, editingTransaction]);
 
     return (
         <form onSubmit={handleSubmit} className="transaction-form">
@@ -309,13 +330,15 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
                     ))}
                 </select>
 
-                {accounts && accounts.length > 0 && (
+                {filteredAccounts && filteredAccounts.length > 0 && (
                     <select
                         value={accountId}
                         onChange={(e) => setAccountId(e.target.value)}
                     >
-                        {accounts.map(a => (
-                            <option key={a.id} value={a.id}>{a.name}</option>
+                        {filteredAccounts.map(a => (
+                            <option key={a.id} value={a.id}>
+                                {a.isFavorite ? '⭐ ' : ''}{a.name}
+                            </option>
                         ))}
                     </select>
                 )}

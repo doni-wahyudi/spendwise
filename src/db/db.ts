@@ -21,6 +21,8 @@ export interface Category {
   color: string;
   isDefault?: boolean;
   budgetLimit?: number;
+  order?: number;
+  isHidden?: boolean;
 }
 
 // Define Interface for Recurring Transaction
@@ -45,6 +47,9 @@ export interface Account {
   color: string;
   icon?: string;
   isDefault?: boolean;
+  isFavorite?: boolean;
+  isHidden?: boolean;
+  order?: number;
   manualBalance?: number; // Manual balance adjustment (for corrections without transactions)
 }
 
@@ -285,6 +290,22 @@ db.version(13).stores({
   categories: '++id, name, type',
   recurringTransactions: '++id, type, categoryId, frequency, isActive',
   accounts: '++id, name, type, isDefault',
+  savingsGoals: '++id, name',
+  billReminders: '++id, name, dueDay, isActive',
+  transactionTemplates: '++id, name, usageCount',
+  tags: '++id, &name',
+  accountTransfers: '++id, fromAccountId, toAccountId, date',
+  ledger: '++id, type, personName, isPaid, dueDate, createdAt, accountId',
+  settings: '&id',
+  syncQueue: '++id, tableName, action, entityId, createdAt'
+});
+
+// Version 14: Added order, isFavorite, isHidden to accounts and categories
+db.version(14).stores({
+  transactions: '++id, type, categoryId, accountId, date',
+  categories: '++id, name, type, order, isHidden',
+  recurringTransactions: '++id, type, categoryId, frequency, isActive',
+  accounts: '++id, name, type, isDefault, isFavorite, isHidden, order',
   savingsGoals: '++id, name',
   billReminders: '++id, name, dueDay, isActive',
   transactionTemplates: '++id, name, usageCount',

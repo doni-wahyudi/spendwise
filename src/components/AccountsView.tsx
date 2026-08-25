@@ -24,7 +24,11 @@ import {
     Calendar,
     Star,
     Layers,
-    Filter
+    Filter,
+    ChevronUp,
+    ChevronDown,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import { t } from '../i18n/translations';
 
@@ -57,6 +61,7 @@ export default function AccountsView() {
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
     const [txFilter, setTxFilter] = useState<TxFilterType>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showHidden, setShowHidden] = useState(false);
 
     // Add / Edit Account modal state
     const [showAddForm, setShowAddForm] = useState(false);
@@ -66,6 +71,8 @@ export default function AccountsView() {
     const [color, setColor] = useState(ACCOUNT_COLORS[0]);
     const [balance, setBalance] = useState('');
     const [adjustBalance, setAdjustBalance] = useState('');
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [isHidden, setIsHidden] = useState(false);
 
     // Transfer Modal state
     const [showTransfer, setShowTransfer] = useState(false);
@@ -77,8 +84,31 @@ export default function AccountsView() {
     // Transfer History modal state
     const [showTransferHistory, setShowTransferHistory] = useState(false);
 
+    // Filter & Sort Accounts: Favorites first, then defaults, then by order/name
+    const displayedAccounts = useMemo(() => {
+        if (!accounts) return [];
+        return [...accounts]
+            .filter(a => showHidden || !a.isHidden)
+            .sort((a, b) => {
+                // Favorites first
+                if (a.isFavorite && !b.isFavorite) return -1;
+                if (!a.isFavorite && b.isFavorite) return 1;
+                // Defaults next
+                if (a.isDefault && !b.isDefault) return -1;
+                if (!a.isDefault && b.isDefault) return 1;
+                // Custom order index
+                const orderA = a.order ?? a.id;
+                const orderB = b.order ?? b.id;
+                return orderA - orderB;
+            });
+    }, [accounts, showHidden]);
+
+    const hiddenCount = useMemo(() => {
+        return accounts?.filter(a => a.isHidden).length || 0;
+    }, [accounts]);
+
     // Auto-select first account if none selected
-    const activeAccountId = selectedAccountId ?? (accounts && accounts.length > 0 ? accounts[0].id : null);
+    const activeAccountId = selectedAccountId ?? (displayedAccounts.length > 0 ? displayedAccounts[0].id : null);
     const selectedAccount = accounts?.find(a => a.id === activeAccountId);
 
     // Calculate actual balance, total spent, income, and transfers for each account
@@ -284,6 +314,8 @@ export default function AccountsView() {
         setColor(ACCOUNT_COLORS[0]);
         setBalance('');
         setAdjustBalance('');
+        setIsFavorite(false);
+        setIsHidden(false);
         setShowAddForm(false);
         setEditingId(null);
     };
@@ -294,6 +326,8 @@ export default function AccountsView() {
         setType(account.type);
         setColor(account.color);
         setEditingId(account.id);
+        setIsFavorite(account.isFavorite || false);
+        setIsHidden(account.isHidden || false);
         setAdjustBalance('');
         setShowAddForm(true);
     };
@@ -314,6 +348,36 @@ export default function AccountsView() {
             setSelectedCategoryId(null);
         }
         addToast(t(language, 'delete') + ' ✓', 'info');
+    };
+
+    // Toggle Favorite Account
+    const handleToggleFavorite = async (id: number, currentFav?: boolean) => {
+        await db.accounts.update(id, { isFavorite: !currentFav });
+        addToast(!currentFav ? t(language, 'setFavorite') + ' ⭐' : t(language, 'removeFavorite'), 'info');
+    };
+
+    // Toggle Hide Account
+    const handleToggleHide = async (id: number, currentHidden?: boolean) => {
+        await db.accounts.update(id, { isHidden: !currentHidden });
+        addToast(!currentHidden ? t(language, 'hideAccount') : t(language, 'unhideAccount'), 'info');
+    };
+
+    // Move Account Up or Down
+    const handleMoveAccount = async (id: number, direction: 'up' | 'down') => {
+        if (!displayedAccounts || displayedAccounts.length < 2) return;
+        const idx = displayedAccounts.findIndex(a => a.id === id);
+        if (idx === -1) return;
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= displayedAccounts.length) return;
+
+        const updatedList = [...displayedAccounts];
+        const temp = updatedList[idx];
+        updatedList[idx] = updatedList[targetIdx];
+        updatedList[targetIdx] = temp;
+
+        for (let i = 0; i < updatedList.length; i++) {
+            await db.accounts.update(updatedList[i].id, { order: i });
+        }
     };
 
     // Set Default Account
@@ -337,7 +401,9 @@ export default function AccountsView() {
             name: name.trim(),
             type,
             color,
-            isDefault: accounts?.length === 0
+            isDefault: accounts?.length === 0,
+            isFavorite,
+            isHidden
         };
 
         if (editingId) {
@@ -358,7 +424,11 @@ export default function AccountsView() {
 
             addToast(t(language, 'edit') + ' ✓', 'success');
         } else {
-            const newAccountId = await db.accounts.add(accountData);
+            const nextOrder = accounts?.length || 0;
+            const newAccountId = await db.accounts.add({
+                ...accountData,
+                order: nextOrder
+            });
             if (balance && parseFormattedNumber(balance) > 0) {
                 const defaultCategory = await db.categories.where('type').equals('income').first();
                 if (defaultCategory && newAccountId) {
@@ -472,18 +542,46 @@ export default function AccountsView() {
                 </div>
             </div>
 
+            {/* Accounts Filter & Hidden Toggle Bar */}
+            {hiddenCount > 0 && (
+                <div className="accounts-filter-bar">
+                    <button
+                        type="button"
+                        className={`acc-filter-toggle-btn ${showHidden ? 'active' : ''}`}
+                        onClick={() => setShowHidden(!showHidden)}
+                    >
+                        {showHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                        <span>
+                            {showHidden
+                                ? t(language, 'hideAccount')
+                                : `${t(language, 'showHiddenAccounts')} (${hiddenCount})`}
+                        </span>
+                    </button>
+                </div>
+            )}
+
             {/* Account Cards Grid / Selector */}
             <div className="accounts-list">
-                {accounts.length === 0 ? (
+                {displayedAccounts.length === 0 ? (
                     <div className="empty-accounts-box">
                         <Wallet size={40} className="empty-icon" />
-                        <p className="empty-message">{language === 'id' ? 'Belum ada akun. Tambahkan akun pertama Anda!' : 'No accounts yet. Add your first account!'}</p>
-                        <button onClick={() => setShowAddForm(true)} className="empty-cta-btn">
-                            <Plus size={16} /> {t(language, 'add')} {t(language, 'accounts')}
-                        </button>
+                        <p className="empty-message">
+                            {accounts?.length === 0
+                                ? (language === 'id' ? 'Belum ada akun. Tambahkan akun pertama Anda!' : 'No accounts yet. Add your first account!')
+                                : (language === 'id' ? 'Semua akun disembunyikan.' : 'All accounts are hidden.')}
+                        </p>
+                        {accounts?.length === 0 ? (
+                            <button onClick={() => setShowAddForm(true)} className="empty-cta-btn">
+                                <Plus size={16} /> {t(language, 'add')} {t(language, 'accounts')}
+                            </button>
+                        ) : (
+                            <button onClick={() => setShowHidden(true)} className="empty-cta-btn secondary">
+                                <Eye size={16} /> {t(language, 'showHiddenAccounts')}
+                            </button>
+                        )}
                     </div>
                 ) : (
-                    accounts.map(account => {
+                    displayedAccounts.map((account, idx) => {
                         const isSelected = account.id === activeAccountId;
                         const spent = accountSpentMap[account.id] || 0;
                         const bal = accountBalances[account.id] || 0;
@@ -493,7 +591,7 @@ export default function AccountsView() {
                         return (
                             <div
                                 key={account.id}
-                                className={`account-card ${isSelected ? 'active-card' : ''} ${account.isDefault ? 'is-default' : ''}`}
+                                className={`account-card ${isSelected ? 'active-card' : ''} ${account.isDefault ? 'is-default' : ''} ${account.isFavorite ? 'is-fav' : ''} ${account.isHidden ? 'is-hidden-card' : ''}`}
                                 style={{ borderLeftColor: account.color }}
                                 onClick={() => setSelectedAccountId(account.id)}
                             >
@@ -509,9 +607,19 @@ export default function AccountsView() {
                                         <div className="account-identity">
                                             <div className="account-title-line">
                                                 <span className="account-title-text">{account.name}</span>
+                                                {account.isFavorite && (
+                                                    <span className="fav-star-badge" title={t(language, 'favorite')}>
+                                                        <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                                                    </span>
+                                                )}
                                                 {account.isDefault && (
                                                     <span className="default-star-badge" title={t(language, 'defaultBadge')}>
-                                                        <Star size={11} fill="#f59e0b" color="#f59e0b" />
+                                                        <Check size={10} /> {t(language, 'defaultBadge')}
+                                                    </span>
+                                                )}
+                                                {account.isHidden && (
+                                                    <span className="hidden-pill-badge" title={t(language, 'hidden')}>
+                                                        {t(language, 'hidden')}
                                                     </span>
                                                 )}
                                             </div>
@@ -520,15 +628,53 @@ export default function AccountsView() {
                                     </div>
 
                                     <div className="account-actions-toolbar" onClick={e => e.stopPropagation()}>
+                                        {/* Reorder Buttons */}
+                                        <button
+                                            onClick={() => handleMoveAccount(account.id, 'up')}
+                                            disabled={idx === 0}
+                                            className="acc-icon-btn move"
+                                            title={t(language, 'moveUp')}
+                                        >
+                                            <ChevronUp size={13} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleMoveAccount(account.id, 'down')}
+                                            disabled={idx === displayedAccounts.length - 1}
+                                            className="acc-icon-btn move"
+                                            title={t(language, 'moveDown')}
+                                        >
+                                            <ChevronDown size={13} />
+                                        </button>
+
+                                        {/* Favorite Star Button */}
+                                        <button
+                                            onClick={() => handleToggleFavorite(account.id, account.isFavorite)}
+                                            className={`acc-icon-btn star ${account.isFavorite ? 'active-fav' : ''}`}
+                                            title={account.isFavorite ? t(language, 'removeFavorite') : t(language, 'setFavorite')}
+                                        >
+                                            <Star size={13} fill={account.isFavorite ? '#f59e0b' : 'none'} color={account.isFavorite ? '#f59e0b' : 'currentColor'} />
+                                        </button>
+
+                                        {/* Hide / Unhide Button */}
+                                        <button
+                                            onClick={() => handleToggleHide(account.id, account.isHidden)}
+                                            className={`acc-icon-btn hide ${account.isHidden ? 'is-hidden-btn' : ''}`}
+                                            title={account.isHidden ? t(language, 'unhideAccount') : t(language, 'hideAccount')}
+                                        >
+                                            {account.isHidden ? <Eye size={13} /> : <EyeOff size={13} />}
+                                        </button>
+
+                                        {/* Default toggle */}
                                         {!account.isDefault && (
                                             <button
                                                 onClick={() => handleSetDefault(account.id)}
-                                                className="acc-icon-btn star"
+                                                className="acc-icon-btn default-btn"
                                                 title={t(language, 'setAsDefault')}
                                             >
-                                                <Star size={13} />
+                                                <Check size={13} />
                                             </button>
                                         )}
+
                                         <button
                                             onClick={() => handleEdit(account)}
                                             className="acc-icon-btn"
@@ -989,6 +1135,25 @@ export default function AccountsView() {
                                         />
                                     ))}
                                 </div>
+                            </div>
+
+                            <div className="form-group-checkboxes">
+                                <label className="custom-checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={isFavorite}
+                                        onChange={e => setIsFavorite(e.target.checked)}
+                                    />
+                                    <span>⭐ {t(language, 'setFavorite')}</span>
+                                </label>
+                                <label className="custom-checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={isHidden}
+                                        onChange={e => setIsHidden(e.target.checked)}
+                                    />
+                                    <span>👁️ {t(language, 'hideAccount')}</span>
+                                </label>
                             </div>
 
                             <div className="modal-actions">

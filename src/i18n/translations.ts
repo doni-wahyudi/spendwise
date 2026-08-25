@@ -46,6 +46,7 @@ interface Translations {
     categoryName: string; editCategory: string; type: string; color: string;
     expenseCategories: string; incomeCategories: string; defaultBadge: string;
     save: string; add: string; edit: string; delete: string; confirm: string;
+    showHiddenCategories: string; hideCategory: string; unhideCategory: string;
     // ── Accounts ──
     accountName: string; initialBalance: string; setNewBalance: string;
     adjustBalance: string; editAccount: string;
@@ -57,6 +58,9 @@ interface Translations {
     viewTransactions: string; allAccounts: string; spendingByCategory: string;
     selectAccountToView: string; transfersCount: string; inflow: string;
     outflow: string; accountDetails: string;
+    favorite: string; setFavorite: string; removeFavorite: string;
+    hideAccount: string; unhideAccount: string; showHiddenAccounts: string;
+    hidden: string; moveUp: string; moveDown: string; reorder: string;
     // ── Search / Filter ──
     searchPlaceholder: string; clearFilters: string;
     allCategories: string; allTags: string; allTypes: string;
@@ -167,6 +171,8 @@ const translations: Record<Language, Translations> = {
         expenseCategories: 'Kategori Pengeluaran', incomeCategories: 'Kategori Pemasukan',
         defaultBadge: 'Bawaan', save: 'Simpan', add: 'Tambah',
         edit: 'Edit', delete: 'Hapus', confirm: 'Konfirmasi',
+        showHiddenCategories: 'Tampilkan Kategori Tersembunyi',
+        hideCategory: 'Sembunyikan Kategori', unhideCategory: 'Tampilkan Kategori',
         accountName: 'Nama Akun', initialBalance: 'Saldo awal (opsional)',
         setNewBalance: 'Atur saldo baru (kosongkan untuk tetap)',
         adjustBalance: 'Sesuaikan Saldo Akun', editAccount: 'Edit Akun',
@@ -184,6 +190,10 @@ const translations: Record<Language, Translations> = {
         selectAccountToView: 'Pilih akun di atas untuk melihat rincian pengeluaran',
         transfersCount: 'Transfer', inflow: 'Masuk', outflow: 'Keluar',
         accountDetails: 'Detail Akun',
+        favorite: 'Favorit', setFavorite: 'Jadikan Favorit', removeFavorite: 'Hapus dari Favorit',
+        hideAccount: 'Sembunyikan Akun', unhideAccount: 'Tampilkan Akun',
+        showHiddenAccounts: 'Tampilkan Akun Tersembunyi', hidden: 'Tersembunyi',
+        moveUp: 'Pindah ke Atas', moveDown: 'Pindah ke Bawah', reorder: 'Atur Urutan',
         searchPlaceholder: 'Cari catatan, kategori, tag, jumlah...',
         clearFilters: 'Hapus filter', allCategories: 'Semua Kategori',
         allTags: 'Semua Tag', allTypes: 'Semua Tipe',
@@ -304,6 +314,8 @@ const translations: Record<Language, Translations> = {
         expenseCategories: 'Expense Categories', incomeCategories: 'Income Categories',
         defaultBadge: 'Default', save: 'Save', add: 'Add',
         edit: 'Edit', delete: 'Delete', confirm: 'Confirm',
+        showHiddenCategories: 'Show Hidden Categories',
+        hideCategory: 'Hide Category', unhideCategory: 'Unhide Category',
         accountName: 'Account name', initialBalance: 'Initial balance (optional)',
         setNewBalance: 'Set new balance (leave empty to keep)',
         adjustBalance: 'Adjust Account Balance', editAccount: 'Edit Account',
@@ -321,6 +333,10 @@ const translations: Record<Language, Translations> = {
         selectAccountToView: 'Select an account above to view spending details',
         transfersCount: 'Transfers', inflow: 'Inflow', outflow: 'Outflow',
         accountDetails: 'Account Details',
+        favorite: 'Favorite', setFavorite: 'Set as Favorite', removeFavorite: 'Remove from Favorite',
+        hideAccount: 'Hide Account', unhideAccount: 'Unhide Account',
+        showHiddenAccounts: 'Show Hidden Accounts', hidden: 'Hidden',
+        moveUp: 'Move Up', moveDown: 'Move Down', reorder: 'Reorder',
         searchPlaceholder: 'Search note, category, tag, amount...',
         clearFilters: 'Clear filters', allCategories: 'All Categories',
         allTags: 'All Tags', allTypes: 'All Types',

@@ -88,6 +88,14 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
             });
     }, [accounts, editingTransaction]);
 
+    // Filter & Sort Categories: respect current transaction type, hide hidden categories unless editing
+    const filteredCategories = useMemo(() => {
+        if (!categories) return [];
+        return categories
+            .filter(c => (c.type === type || c.type === 'both') && (!c.isHidden || c.id === editingTransaction?.categoryId))
+            .sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+    }, [categories, type, editingTransaction]);
+
     // Set default account for new transactions only
     useEffect(() => {
         if (!editingTransaction && filteredAccounts && filteredAccounts.length > 0 && !accountId) {
@@ -228,15 +236,7 @@ export default function TransactionForm({ onSuccess }: TransactionFormProps) {
         }
     };
 
-    if (!categories) return null;
-
     const isEditing = !!editingTransaction;
-    const filteredCategories = useMemo(() => {
-        if (!categories) return [];
-        return categories
-            .filter(c => (c.type === type || c.type === 'both') && (!c.isHidden || c.id === editingTransaction?.categoryId))
-            .sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
-    }, [categories, type, editingTransaction]);
 
     return (
         <form onSubmit={handleSubmit} className="transaction-form">

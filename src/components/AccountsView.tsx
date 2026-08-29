@@ -4,7 +4,7 @@ import { db, type Account, type Transaction, type AccountTransfer } from '../db/
 import { useToast } from '../store/useToast';
 import { useStore } from '../store/useStore';
 import { formatCurrency, formatNumber, parseFormattedNumber } from '../utils/currency';
-import { formatLocalDate } from '../utils/dateUtils';
+import { formatLocalDate, getSalaryPeriodRange, formatDateLabel } from '../utils/dateUtils';
 import {
     Wallet,
     Plus,
@@ -28,7 +28,9 @@ import {
     ChevronUp,
     ChevronDown,
     Eye,
-    EyeOff
+    EyeOff,
+    Briefcase,
+    Clock
 } from 'lucide-react';
 import { t } from '../i18n/translations';
 
@@ -45,10 +47,11 @@ const ACCOUNT_COLORS = [
 ];
 
 type TxFilterType = 'all' | 'expense' | 'income' | 'transfer';
+export type AccountPeriodType = 'day' | 'week' | 'month' | 'salary' | 'custom' | 'all';
 
 export default function AccountsView() {
     const { addToast } = useToast();
-    const { language, setEditingTransaction } = useStore();
+    const { language, setEditingTransaction, salaryDay } = useStore();
 
     // Database Live Queries
     const accounts = useLiveQuery(() => db.accounts.toArray());
@@ -62,6 +65,11 @@ export default function AccountsView() {
     const [txFilter, setTxFilter] = useState<TxFilterType>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showHidden, setShowHidden] = useState(false);
+
+    // Period filter state for Account spending breakdown & activity
+    const [accountPeriod, setAccountPeriod] = useState<AccountPeriodType>('month');
+    const [customStartDate, setCustomStartDate] = useState(formatLocalDate(new Date()));
+    const [customEndDate, setCustomEndDate] = useState(formatLocalDate(new Date()));
 
     // Add / Edit Account modal state
     const [showAddForm, setShowAddForm] = useState(false);
@@ -111,8 +119,8 @@ export default function AccountsView() {
     const activeAccountId = selectedAccountId ?? (displayedAccounts.length > 0 ? displayedAccounts[0].id : null);
     const selectedAccount = accounts?.find(a => a.id === activeAccountId);
 
-    // Calculate actual balance, total spent, income, and transfers for each account
-    const { accountBalances, accountSpentMap, accountIncomeMap, accountTransferInMap, accountTransferOutMap } = useMemo(() => {
+    // Calculate actual balance and total spent for each account
+    const { accountBalances, accountSpentMap } = useMemo(() => {
         const balances: Record<number, number> = {};
         const spentMap: Record<number, number> = {};
         const incomeMap: Record<number, number> = {};
@@ -170,7 +178,110 @@ export default function AccountsView() {
     const getAccountName = (id: number) => accounts?.find(a => a.id === id)?.name || 'Unknown';
     const getCategory = (id: number) => categories?.find(c => c.id === id);
 
-    // Selected account's category spending distribution
+    // Selected Account's active Date Range based on accountPeriod
+    const accountDateRange = useMemo<{ startDate: string; endDate: string; label: string }>(() => {
+        const now = new Date();
+        const today = formatLocalDate(now);
+
+        switch (accountPeriod) {
+            case 'day': {
+                return {
+                    startDate: today,
+                    endDate: today,
+                    label: language === 'id' ? `Hari Ini (${formatDateLabel(today)})` : `Today (${formatDateLabel(today)})`
+                };
+            }
+            case 'week': {
+                const dayOfWeek = now.getDay();
+                const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                const startOfWeek = new Date(now.getFullYear(), now.getMonth(), diff);
+                const endOfWeek = new Date(now.getFullYear(), now.getMonth(), diff + 6);
+                const s = formatLocalDate(startOfWeek);
+                const e = formatLocalDate(endOfWeek);
+                return {
+                    startDate: s,
+                    endDate: e,
+                    label: `${formatDateLabel(s)} – ${formatDateLabel(e)}`
+                };
+            }
+            case 'month': {
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                const s = formatLocalDate(startOfMonth);
+                const e = formatLocalDate(endOfMonth);
+                return {
+                    startDate: s,
+                    endDate: e,
+                    label: now.toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { month: 'long', year: 'numeric' })
+                };
+            }
+            case 'salary': {
+                const salRange = getSalaryPeriodRange(salaryDay || 1);
+                return {
+                    startDate: salRange.startDate,
+                    endDate: salRange.endDate,
+                    label: `${language === 'id' ? 'Siklus Gaji' : 'Salary Cycle'} (${formatDateLabel(salRange.startDate)} – ${formatDateLabel(salRange.endDate)})`
+                };
+            }
+            case 'custom': {
+                const s = customStartDate || today;
+                const e = customEndDate || today;
+                return {
+                    startDate: s,
+                    endDate: e,
+                    label: `${formatDateLabel(s)} – ${formatDateLabel(e)}`
+                };
+            }
+            case 'all':
+            default: {
+                return {
+                    startDate: '1970-01-01',
+                    endDate: '2099-12-31',
+                    label: language === 'id' ? 'Semua Waktu' : 'All Time'
+                };
+            }
+        }
+    }, [accountPeriod, customStartDate, customEndDate, salaryDay, language]);
+
+    // Financial Metrics for the selected account in the active date period
+    const accountPeriodMetrics = useMemo(() => {
+        if (!activeAccountId || !transactions) {
+            return { periodSpent: 0, periodReceived: 0, periodNetTransfer: 0 };
+        }
+        let spent = 0;
+        let received = 0;
+        let tfIn = 0;
+        let tfOut = 0;
+
+        transactions.forEach(tx => {
+            if (
+                tx.accountId === activeAccountId &&
+                tx.date >= accountDateRange.startDate &&
+                tx.date <= accountDateRange.endDate
+            ) {
+                if (tx.type === 'expense') {
+                    spent += tx.amount;
+                } else if (tx.type === 'income') {
+                    received += tx.amount;
+                }
+            }
+        });
+
+        transfers?.forEach(tf => {
+            if (tf.date >= accountDateRange.startDate && tf.date <= accountDateRange.endDate) {
+                if (tf.fromAccountId === activeAccountId) tfOut += tf.amount;
+                if (tf.toAccountId === activeAccountId) tfIn += tf.amount;
+            }
+        });
+
+        return {
+            periodSpent: spent,
+            periodReceived: received,
+            periodNetTransfer: tfIn - tfOut
+        };
+    }, [activeAccountId, transactions, transfers, accountDateRange]);
+
+    // Selected account's category spending distribution in the active date period
     const accountCategorySpending = useMemo(() => {
         if (!activeAccountId || !transactions || !categories) return [];
 
@@ -178,7 +289,12 @@ export default function AccountsView() {
         let totalExpense = 0;
 
         transactions.forEach(tx => {
-            if (tx.accountId === activeAccountId && tx.type === 'expense') {
+            if (
+                tx.accountId === activeAccountId &&
+                tx.type === 'expense' &&
+                tx.date >= accountDateRange.startDate &&
+                tx.date <= accountDateRange.endDate
+            ) {
                 catTotals[tx.categoryId] = (catTotals[tx.categoryId] || 0) + tx.amount;
                 totalExpense += tx.amount;
             }
@@ -197,9 +313,13 @@ export default function AccountsView() {
                 };
             })
             .sort((a, b) => b.amount - a.amount);
-    }, [activeAccountId, transactions, categories]);
+    }, [activeAccountId, transactions, categories, accountDateRange]);
 
-    // Unified account activity feed (transactions + transfers)
+    const totalPeriodExpense = useMemo(() => {
+        return accountCategorySpending.reduce((sum, item) => sum + item.amount, 0);
+    }, [accountCategorySpending]);
+
+    // Unified account activity feed (transactions + transfers) filtered by date period
     interface ActivityItem {
         id: string;
         date: string;
@@ -219,9 +339,13 @@ export default function AccountsView() {
         if (!activeAccountId) return [];
         const list: ActivityItem[] = [];
 
-        // Add transactions for this account
+        // Add transactions for this account within active period
         transactions?.forEach(tx => {
-            if (tx.accountId === activeAccountId) {
+            if (
+                tx.accountId === activeAccountId &&
+                tx.date >= accountDateRange.startDate &&
+                tx.date <= accountDateRange.endDate
+            ) {
                 const cat = getCategory(tx.categoryId);
                 list.push({
                     id: `tx_${tx.id}`,
@@ -239,30 +363,35 @@ export default function AccountsView() {
             }
         });
 
-        // Add transfers involving this account
+        // Add transfers involving this account within active period
         transfers?.forEach(tf => {
-            if (tf.fromAccountId === activeAccountId) {
-                list.push({
-                    id: `tf_out_${tf.id}`,
-                    date: tf.date,
-                    timestamp: tf.createdAt || new Date(tf.date).getTime(),
-                    kind: 'transfer_out',
-                    amount: tf.amount,
-                    title: `${language === 'id' ? 'Transfer ke' : 'Transfer to'} ${getAccountName(tf.toAccountId)}`,
-                    subtitle: tf.note,
-                    originalTf: tf
-                });
-            } else if (tf.toAccountId === activeAccountId) {
-                list.push({
-                    id: `tf_in_${tf.id}`,
-                    date: tf.date,
-                    timestamp: tf.createdAt || new Date(tf.date).getTime(),
-                    kind: 'transfer_in',
-                    amount: tf.amount,
-                    title: `${language === 'id' ? 'Transfer dari' : 'Transfer from'} ${getAccountName(tf.fromAccountId)}`,
-                    subtitle: tf.note,
-                    originalTf: tf
-                });
+            if (
+                tf.date >= accountDateRange.startDate &&
+                tf.date <= accountDateRange.endDate
+            ) {
+                if (tf.fromAccountId === activeAccountId) {
+                    list.push({
+                        id: `tf_out_${tf.id}`,
+                        date: tf.date,
+                        timestamp: tf.createdAt || new Date(tf.date).getTime(),
+                        kind: 'transfer_out',
+                        amount: tf.amount,
+                        title: `${language === 'id' ? 'Transfer ke' : 'Transfer to'} ${getAccountName(tf.toAccountId)}`,
+                        subtitle: tf.note,
+                        originalTf: tf
+                    });
+                } else if (tf.toAccountId === activeAccountId) {
+                    list.push({
+                        id: `tf_in_${tf.id}`,
+                        date: tf.date,
+                        timestamp: tf.createdAt || new Date(tf.date).getTime(),
+                        kind: 'transfer_in',
+                        amount: tf.amount,
+                        title: `${language === 'id' ? 'Transfer dari' : 'Transfer from'} ${getAccountName(tf.fromAccountId)}`,
+                        subtitle: tf.note,
+                        originalTf: tf
+                    });
+                }
             }
         });
 
@@ -743,7 +872,95 @@ export default function AccountsView() {
                         </div>
                     </div>
 
-                    {/* Financial Metrics Strip for this Account */}
+                    {/* Account Period Selector Filter Bar (Day, Weeks, Month, Salary Range, Custom, All) */}
+                    <div className="account-period-filter-section">
+                        <div className="account-period-pills-row">
+                            <button
+                                type="button"
+                                className={`period-pill-btn ${accountPeriod === 'day' ? 'active' : ''}`}
+                                onClick={() => setAccountPeriod('day')}
+                            >
+                                <Clock size={12} />
+                                <span>{t(language, 'daily')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`period-pill-btn ${accountPeriod === 'week' ? 'active' : ''}`}
+                                onClick={() => setAccountPeriod('week')}
+                            >
+                                <Calendar size={12} />
+                                <span>{t(language, 'weekly')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`period-pill-btn ${accountPeriod === 'month' ? 'active' : ''}`}
+                                onClick={() => setAccountPeriod('month')}
+                            >
+                                <Calendar size={12} />
+                                <span>{t(language, 'monthly')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`period-pill-btn ${accountPeriod === 'salary' ? 'active' : ''}`}
+                                onClick={() => setAccountPeriod('salary')}
+                            >
+                                <Briefcase size={12} />
+                                <span>{language === 'id' ? `Gaji (${salaryDay || 1})` : `Salary (${salaryDay || 1})`}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`period-pill-btn ${accountPeriod === 'all' ? 'active' : ''}`}
+                                onClick={() => setAccountPeriod('all')}
+                            >
+                                <span>{t(language, 'allTime')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`period-pill-btn ${accountPeriod === 'custom' ? 'active' : ''}`}
+                                onClick={() => setAccountPeriod('custom')}
+                            >
+                                <Filter size={12} />
+                                <span>{t(language, 'customRange')}</span>
+                            </button>
+                        </div>
+
+                        {/* Active Date Range Label Badge */}
+                        <div className="account-period-badge-bar">
+                            <span className="period-badge-text">
+                                <Calendar size={13} />
+                                <span>{accountDateRange.label}</span>
+                            </span>
+                        </div>
+
+                        {/* Custom Date Range Picker */}
+                        {accountPeriod === 'custom' && (
+                            <div className="account-custom-range-box">
+                                <div className="custom-date-inputs">
+                                    <div className="custom-input-group">
+                                        <label>{t(language, 'startDate')}</label>
+                                        <input
+                                            type="date"
+                                            value={customStartDate}
+                                            onChange={(e) => setCustomStartDate(e.target.value)}
+                                            className="custom-date-input"
+                                        />
+                                    </div>
+                                    <span className="date-separator">–</span>
+                                    <div className="custom-input-group">
+                                        <label>{t(language, 'endDate')}</label>
+                                        <input
+                                            type="date"
+                                            value={customEndDate}
+                                            onChange={(e) => setCustomEndDate(e.target.value)}
+                                            className="custom-date-input"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Financial Metrics Strip for this Account (Reflects Active Period) */}
                     <div className="account-metrics-strip">
                         <div className="metric-box spent">
                             <div className="metric-label">
@@ -751,7 +968,7 @@ export default function AccountsView() {
                                 <span>{t(language, 'totalSpent')}</span>
                             </div>
                             <span className="metric-value">
-                                {formatCurrency(accountSpentMap[selectedAccount.id] || 0)}
+                                {formatCurrency(accountPeriodMetrics.periodSpent)}
                             </span>
                         </div>
 
@@ -761,7 +978,7 @@ export default function AccountsView() {
                                 <span>{t(language, 'totalReceived')}</span>
                             </div>
                             <span className="metric-value">
-                                {formatCurrency(accountIncomeMap[selectedAccount.id] || 0)}
+                                {formatCurrency(accountPeriodMetrics.periodReceived)}
                             </span>
                         </div>
 
@@ -771,30 +988,40 @@ export default function AccountsView() {
                                 <span>{t(language, 'netTransfers')}</span>
                             </div>
                             <span className="metric-value">
-                                {formatCurrency((accountTransferInMap[selectedAccount.id] || 0) - (accountTransferOutMap[selectedAccount.id] || 0))}
+                                {formatCurrency(accountPeriodMetrics.periodNetTransfer)}
                             </span>
                         </div>
                     </div>
 
                     {/* Category Spending Breakdown for Selected Account */}
-                    {accountCategorySpending.length > 0 && (
-                        <div className="account-category-spending-card">
-                            <div className="card-header-row">
-                                <h4>
-                                    <PieChart size={15} />
-                                    <span>{t(language, 'spendingByCategory')}</span>
-                                </h4>
-                                {selectedCategoryId && (
-                                    <button
-                                        className="clear-cat-filter-mini-btn"
-                                        onClick={() => setSelectedCategoryId(null)}
-                                        title={language === 'id' ? 'Reset filter kategori' : 'Clear category filter'}
-                                    >
-                                        <X size={12} /> {language === 'id' ? 'Reset Filter' : 'Reset'}
-                                    </button>
+                    <div className="account-category-spending-card">
+                        <div className="card-header-row">
+                            <h4>
+                                <PieChart size={15} />
+                                <span>{t(language, 'spendingByCategory')}</span>
+                                {totalPeriodExpense > 0 && (
+                                    <span className="total-period-expense-pill">
+                                        {formatCurrency(totalPeriodExpense)}
+                                    </span>
                                 )}
-                            </div>
+                            </h4>
+                            {selectedCategoryId && (
+                                <button
+                                    className="clear-cat-filter-mini-btn"
+                                    onClick={() => setSelectedCategoryId(null)}
+                                    title={language === 'id' ? 'Reset filter kategori' : 'Clear category filter'}
+                                >
+                                    <X size={12} /> {language === 'id' ? 'Reset Filter' : 'Reset'}
+                                </button>
+                            )}
+                        </div>
 
+                        {accountCategorySpending.length === 0 ? (
+                            <div className="spending-empty-state">
+                                <PieChart size={28} className="empty-icon" />
+                                <p>{language === 'id' ? 'Belum ada pengeluaran pada periode ini.' : 'No expenses recorded in this period.'}</p>
+                            </div>
+                        ) : (
                             <div className="category-bars-list">
                                 {accountCategorySpending.map(cat => {
                                     const isCatActive = selectedCategoryId === cat.id;
@@ -835,27 +1062,27 @@ export default function AccountsView() {
                                     );
                                 })}
                             </div>
+                        )}
 
-                            {/* Active Category Filter Indicator */}
-                            {selectedCategoryId && (
-                                <div className="category-filter-notice">
-                                    <div className="filter-notice-text">
-                                        <Filter size={13} />
-                                        <span>
-                                            {language === 'id' ? 'Menampilkan kategori:' : 'Filtered by:'}{' '}
-                                            <strong>{categories?.find(c => c.id === selectedCategoryId)?.name}</strong>
-                                        </span>
-                                    </div>
-                                    <button
-                                        className="clear-cat-filter-btn"
-                                        onClick={() => setSelectedCategoryId(null)}
-                                    >
-                                        <X size={12} /> {language === 'id' ? 'Hapus Filter' : 'Clear Filter'}
-                                    </button>
+                        {/* Active Category Filter Indicator */}
+                        {selectedCategoryId && (
+                            <div className="category-filter-notice">
+                                <div className="filter-notice-text">
+                                    <Filter size={13} />
+                                    <span>
+                                        {language === 'id' ? 'Menampilkan kategori:' : 'Filtered by:'}{' '}
+                                        <strong>{categories?.find(c => c.id === selectedCategoryId)?.name}</strong>
+                                    </span>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                                <button
+                                    className="clear-cat-filter-btn"
+                                    onClick={() => setSelectedCategoryId(null)}
+                                >
+                                    <X size={12} /> {language === 'id' ? 'Hapus Filter' : 'Clear Filter'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Transactions Controls (Filter Pills + Search) */}
                     <div className="account-tx-control-bar">
